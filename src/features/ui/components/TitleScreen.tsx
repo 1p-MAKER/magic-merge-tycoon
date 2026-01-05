@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { usePersistence } from '../../../persistence/hooks/usePersistence';
-import { calculateMps } from '../../../economy/logic/economyUtils';
+import { usePersistence } from '../../persistence/hooks/usePersistence';
+import { calculateMps } from '../../economy/logic/economyUtils';
 import styles from './TitleScreen.module.css';
 
 interface TitleScreenProps {
