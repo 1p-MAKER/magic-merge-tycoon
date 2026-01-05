@@ -1,6 +1,9 @@
 import { useCallback } from 'react';
 import { type GridState } from '../../core/logic/types';
 
+const STORAGE_KEY_GRID = 'mmt_grid';
+const STORAGE_KEY_MANA = 'mmt_mana';
+const STORAGE_KEY_TIME = 'mmt_time';
 const STORAGE_KEY_UPGRADES = 'mmt_upgrades';
 
 interface UpgradeState {

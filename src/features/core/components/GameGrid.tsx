@@ -89,10 +89,10 @@ export const GameGrid: React.FC = () => {
     // Auto-Save Effect
     useEffect(() => {
         const timer = setTimeout(() => {
-            saveGame(grid, mana);
+            saveGame(grid, mana, upgrades);
         }, 1000); // Debounce save every 1s
         return () => clearTimeout(timer);
-    }, [grid, mana, saveGame]);
+    }, [grid, mana, upgrades, saveGame]);
 
     // Sensors for better touch/mouse handling
     const sensors = useSensors(
@@ -238,7 +238,7 @@ export const GameGrid: React.FC = () => {
 
         // Rebuild Grid
         const newGrid: GridState = grid.map(row => row.map(cell => ({ ...cell, item: null })));
-        const emptyCells = [];
+        const emptyCells: { x: number, y: number }[] = [];
         for (let y = 0; y < GRID_HEIGHT; y++) {
             for (let x = 0; x < GRID_WIDTH; x++) {
                 if (!newGrid[y][x].isLocked) emptyCells.push({ x, y });
