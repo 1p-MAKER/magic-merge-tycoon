@@ -405,6 +405,7 @@ export const GameGrid: React.FC = () => {
 
                                 // Determine Tier/Type based on Upgrades and Enemy Chance
                                 const probs = getSummonProbabilities(upgrades.summonLuck);
+                                const rand = Math.random();
                                 let tier = 1;
                                 let type: 'creature' | 'enemy' = 'creature';
 
@@ -413,11 +414,17 @@ export const GameGrid: React.FC = () => {
                                     type = 'enemy';
                                     tier = 1; // Enemy doesn't really use tier logic yet
                                 } else {
-                                    tier = 1;
+                                    // Creature Logic - Use the probability from upgrades
+                                    if (rand < probs.tier3) {
+                                        tier = 3;
+                                    } else if (rand < probs.tier3 + probs.tier2) {
+                                        tier = 2;
+                                    } else {
+                                        tier = 1;
+                                    }
                                 }
 
                                 newGrid[target.y][target.x].item = {
-                                    id: generateId(),
                                     id: generateId(),
                                     tier: tier as any,
                                     type: type
