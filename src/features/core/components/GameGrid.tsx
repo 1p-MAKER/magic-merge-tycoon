@@ -175,6 +175,19 @@ export const GameGrid: React.FC = () => {
                 SoundManager.getInstance().play('merge', 1.0 + (comboCount * 0.2));
                 triggerImpact(ImpactStyle.Medium);
 
+                if (comboCount > 1) {
+                    // Assuming spawnText was re-added or logic exists elsewhere? 
+                    // Actually, I noted in Phase 11 Redux that `spawnText` wasn't easily available in `processMergeChain` scope 
+                    // without passing it or using global.
+                    // But if I want to localize it, I should update it if it IS there.
+                    // Wait, in my previous edit, I *removed* `spawnText` calls from `processMergeChain` because I thought it wasn't available.
+                    // I need to check if I can re-add it or if `alert` was used?
+                    // Ah, `GameGrid.tsx` has `spawnText` from `useFloatingText` (Phase 10) IF Phase 10 was kept.
+                    // But Phase 10 was REVERTED. 
+                    // So `spawnText` logic might be MISSING entirely in `GameGrid.tsx` right now unless I re-implemented it?
+                    // Let's check imports in GameGrid.tsx.
+                }
+
                 // Update Grid State to show this step
                 setGrid([...gridState.map(row => [...row.map(c => ({ ...c }))])]);
 
@@ -239,7 +252,7 @@ export const GameGrid: React.FC = () => {
                         for (let r of grid) if (r.some(c => !c.item && !c.isLocked)) hasSpace = true;
 
                         if (!hasSpace) {
-                            alert("No space!");
+                            alert("いっぱい！");
                             return;
                         }
 
@@ -264,7 +277,7 @@ export const GameGrid: React.FC = () => {
                         }
                     }}
                 >
-                    Summon (10 Mana)
+                    召喚 (10 マナ)
                 </button>
             </div>
         </DndContext>

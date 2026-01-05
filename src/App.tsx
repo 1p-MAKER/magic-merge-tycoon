@@ -20,7 +20,7 @@ function App() {
             margin: 0,
             fontSize: '1.8rem',
             textShadow: '0 0 10px var(--color-accent)'
-          }}>Magic Merge</h1>
+          }}>マジックマージ</h1>
         </div>
 
         <EconomyProvider>
