@@ -42,10 +42,17 @@ export const GridCell: React.FC<GridCellProps> = ({ cell }) => {
                     {...attributes}
                     className={`${styles.item} ${styles[`tier-${cell.item.tier}`]}`}
                 >
-                    {/* Placeholder for Item Visuals - Text for now */}
-                    <span className={styles.label}>
-                        T{cell.item.tier}
-                    </span>
+                    {cell.item.tier <= 5 ? (
+                        <img
+                            src={`/assets/creatures/creature_t${cell.item.tier}.png`}
+                            className={styles.itemImage}
+                            alt={`Tier ${cell.item.tier}`}
+                        />
+                    ) : (
+                        <span className={styles.label}>
+                            T{cell.item.tier}
+                        </span>
+                    )}
                 </div>
             )}
         </div>

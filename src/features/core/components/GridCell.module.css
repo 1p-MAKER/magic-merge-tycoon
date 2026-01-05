@@ -23,18 +23,31 @@
 }
 
 .item {
-  width: 90%;
-  height: 90%;
-  border-radius: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
   color: white;
-  cursor: grab;
-  touch-action: none;
-  /* Crucial for Dnd-kit on mobile */
+  font-weight: bold;
   user-select: none;
+  cursor: grab;
+  /* background-color fallback handled by tier classes for now, but images will cover */
+  background-color: transparent !important;
+  /* Force transparent for PNGs */
+}
+
+.itemImage {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.3));
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.item:active .itemImage {
+  transform: scale(1.1);
 }
 
 .item:active {
