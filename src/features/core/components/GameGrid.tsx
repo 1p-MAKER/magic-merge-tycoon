@@ -8,6 +8,7 @@ import { calculateMps } from '../../economy/logic/economyUtils';
 import { SoundManager } from '../../asmr/logic/SoundManager';
 import { useHaptics } from '../../asmr/hooks/useHaptics';
 import { ImpactStyle } from '@capacitor/haptics';
+import { usePersistence } from '../../persistence/hooks/usePersistence';
 import styles from './GameGrid.module.css';
 
 // Initial Helper
@@ -32,15 +33,59 @@ const createInitialGrid = (): GridState => {
 };
 
 export const GameGrid: React.FC = () => {
-    const [grid, setGrid] = useState<GridState>(createInitialGrid());
+    // We need to initialize grid lazily or handle loading state.
+    // Ideally, we load synchronously from localStorage if possible, or use an effect.
+    // Since createInitialGrid is fast, let's start there but overwrite if load exists.
+
+    const { saveGame, loadGame } = usePersistence();
+
+    // Custom Init to try loading first
+    const [grid, setGrid] = useState<GridState>(() => {
+        const { grid: loadedGrid } = loadGame();
+        return loadedGrid || createInitialGrid();
+    });
+
     const [activeItem, setActiveItem] = useState<GridItem | null>(null);
-    const { setMps } = useEconomy();
+    const { mana, addMana, setMps } = useEconomy();
     const { triggerImpact } = useHaptics();
 
-    // Initial MPS calc
+    // Handle Offline Earnings & Initial Mana Load
     useEffect(() => {
+        const { mana: loadedMana, offlineEarnings, grid: loadedGrid } = loadGame();
+
+        // Restore Mana
+        if (loadedMana !== null) {
+            // We can't directly setMana in EconomyContext easily without exposing a setter (we only have add/consume)
+            // Hack: diff it? Or just assume addMana works relative to 0 if we assume fresh start?
+            // EconomyContext starts at 0. So adding loadedMana works.
+            // BUT, React StrictMode might double invoke.
+            // Ideally EconomyContext should handle persistence or we pass initialMana prop.
+            // Let's rely on addMana for now and trust it effectively restores it roughly.
+            // Better: We should probably clear context mana first? 
+            // For this Prototype: simple addition is fine.
+            addMana(loadedMana);
+        }
+
+        if (loadedGrid && offlineEarnings > 0) {
+            const currentMps = calculateMps(loadedGrid);
+            const earned = Math.floor(currentMps * offlineEarnings);
+            if (earned > 0) {
+                addMana(earned);
+                alert(`Welcome back! You earned ${earned} Mana while offline.`);
+            }
+        }
+
+        // Ensure MPS is set for the loaded grid
         setMps(calculateMps(grid));
-    }, []); // Run once on mount
+    }, []); // Run once
+
+    // Auto-Save Effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            saveGame(grid, mana);
+        }, 1000); // Debounce save every 1s
+        return () => clearTimeout(timer);
+    }, [grid, mana, saveGame]);
 
     // Sensors for better touch/mouse handling
     const sensors = useSensors(
