@@ -13,22 +13,8 @@ export const calculateSummonUpgradeCost = (currentLevel: number): number => {
 
 export const getSummonProbabilities = (level: number): SummonProbabilities => {
     // Default Level 1
-    let p = { tier1: 0.80, tier2: 0.20, tier3: 0.00 }; // Current base seems to indicate 20% T2 chance in GameGrid logic
-
     // Let's refine the progression
     // Level 1: 80% T1, 20% T2, 0% T3 (Matches existing logic somewhat "rand < 0.25")
-    // Note: The previous logic had: < 0.05 (T3), < 0.25 (T2).
-    // This means T3 was 5%, T2 was 20%, T1 was 75%.
-    // Wait, the previous code:
-    // if (rand < 0.05) -> T3
-    // else if (rand < 0.25) -> T2
-    // So T3 is 5%, T2 is 20% (0.25 - 0.05).
-
-    // Let's make Level 1 weaker so upgrades feel good? Or match existing?
-    // Let's match existing as Level 1 to not nerf the user.
-
-    const baseT3 = 0.05;
-    const baseT2 = 0.20;
 
     // Each level adds 2% to T3 and 5% to T2, constrained.
 
