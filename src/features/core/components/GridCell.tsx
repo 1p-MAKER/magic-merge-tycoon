@@ -6,9 +6,10 @@ import styles from './GridCell.module.css';
 interface GridCellProps {
     cell: GridCellType;
     isSelected?: boolean;
+    onClick?: () => void;
 }
 
-export const GridCell: React.FC<GridCellProps> = ({ cell }) => {
+export const GridCell: React.FC<GridCellProps> = ({ cell, onClick }) => {
     const cellId = `${cell.x},${cell.y}`;
 
     // Droppable handling (Accepts drops)
@@ -33,6 +34,7 @@ export const GridCell: React.FC<GridCellProps> = ({ cell }) => {
         <div
             ref={setDroppableRef}
             className={`${styles.cell} ${isOver ? styles.over : ''} ${cell.isLocked ? styles.locked : ''}`}
+            onClick={onClick}
         >
             {cell.item && (
                 <div

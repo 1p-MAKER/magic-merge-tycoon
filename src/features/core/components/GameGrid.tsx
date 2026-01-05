@@ -9,6 +9,8 @@ import { SoundManager } from '../../asmr/logic/SoundManager';
 import { useHaptics } from '../../asmr/hooks/useHaptics';
 import { ImpactStyle } from '@capacitor/haptics';
 import { usePersistence } from '../../persistence/hooks/usePersistence';
+import { ShopModal } from '../../shop/components/ShopModal';
+import { getSummonProbabilities, SHUFFLE_COST, PURGE_COST } from '../../shop/logic/shopLogic';
 import styles from './GameGrid.module.css';
 
 // Initial Helper
@@ -46,8 +48,12 @@ export const GameGrid: React.FC = () => {
     });
 
     const [activeItem, setActiveItem] = useState<GridItem | null>(null);
-    const { mana, addMana, consumeMana, setMps } = useEconomy();
+    const { mana, addMana, consumeMana, setMps, upgrades } = useEconomy();
     const { triggerImpact } = useHaptics();
+
+    // Shop & Active Skills State
+    const [showShop, setShowShop] = useState(false);
+    const [isPurgeMode, setIsPurgeMode] = useState(false);
 
     // Handle Offline Earnings & Initial Mana Load
     useEffect(() => {
@@ -96,6 +102,7 @@ export const GameGrid: React.FC = () => {
     );
 
     const handleDragStart = (event: DragStartEvent) => {
+        if (isPurgeMode) return; // Disable drag in purge mode
         const { active } = event;
         const { item } = active.data.current as { item: GridItem };
         setActiveItem(item);
@@ -209,78 +216,194 @@ export const GameGrid: React.FC = () => {
         setMps(calculateMps(gridState));
     };
 
+    // --- Active Skills ---
+
+    const handleShuffle = () => {
+        if (!consumeMana(SHUFFLE_COST)) {
+            alert("マナが足りません！");
+            return;
+        }
+
+        // Gather all items
+        const items: GridItem[] = [];
+        grid.forEach(row => row.forEach(cell => {
+            if (cell.item) items.push(cell.item);
+        }));
+
+        // Fisher-Yates Shuffle
+        for (let i = items.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [items[i], items[j]] = [items[j], items[i]];
+        }
+
+        // Rebuild Grid
+        const newGrid: GridState = grid.map(row => row.map(cell => ({ ...cell, item: null })));
+        const emptyCells = [];
+        for (let y = 0; y < GRID_HEIGHT; y++) {
+            for (let x = 0; x < GRID_WIDTH; x++) {
+                if (!newGrid[y][x].isLocked) emptyCells.push({ x, y });
+            }
+        }
+
+        // Place items back randomly
+        items.forEach((item, index) => {
+            if (index < emptyCells.length) {
+                const { x, y } = emptyCells[index];
+                newGrid[y][x].item = item;
+            }
+        });
+
+        triggerImpact(ImpactStyle.Heavy);
+        setGrid(newGrid);
+        setMps(calculateMps(newGrid));
+    };
+
+    const handleCellClick = (cell: GridCell) => {
+        if (!isPurgeMode) return;
+        if (!cell.item) return;
+
+        if (consumeMana(PURGE_COST)) {
+            const newGrid = [...grid.map(row => [...row.map(c => ({ ...c }))])];
+            newGrid[cell.y][cell.x].item = null;
+            setGrid(newGrid);
+            setMps(calculateMps(newGrid));
+            triggerImpact(ImpactStyle.Medium);
+            // setIsPurgeMode(false); // Optional: Auto-exit? Let's keep it manual toggle for multi-delete
+        } else {
+            alert("マナが足りません！");
+            setIsPurgeMode(false);
+        }
+    };
+
     return (
-        <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-        >
-            <div className={styles.gridContainer}>
-                {grid.map((row, y) => (
-                    <div key={`row-${y}`} className={styles.row}>
-                        {row.map((cell) => (
-                            <GridCellComponent key={`${cell.x},${cell.y}`} cell={cell} />
-                        ))}
+        <>
+            {showShop && <ShopModal onClose={() => setShowShop(false)} />}
+
+            <DndContext
+                sensors={sensors}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+            >
+                <div className={styles.gridContainer} style={{ border: isPurgeMode ? '2px solid #ff4757' : undefined }}>
+                    {grid.map((row, y) => (
+                        <div key={`row-${y}`} className={styles.row}>
+                            {row.map((cell) => (
+                                <GridCellComponent
+                                    key={`${cell.x},${cell.y}`}
+                                    cell={cell}
+                                    onClick={() => handleCellClick(cell)}
+                                />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+
+                <DragOverlay>
+                    {activeItem ? (
+                        <div className={`${styles.dragOverlay} ${styles[`tier-${activeItem.tier}`]}`}>
+                            {activeItem.tier <= 5 ? (
+                                <img
+                                    src={`/assets/creatures/creature_t${activeItem.tier}.png`}
+                                    style={{ width: '85%', height: '85%', objectFit: 'contain' }}
+                                    alt={`Tier ${activeItem.tier}`}
+                                />
+                            ) : (
+                                `T${activeItem.tier}`
+                            )}
+                        </div>
+                    ) : null}
+                </DragOverlay>
+
+                {/* CONTROLS */}
+                <div className={styles.controls} style={{ flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+
+                    <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>
+                        <button
+                            className={styles.summonButton}
+                            style={{ flex: 1, padding: '8px', fontSize: '0.9rem', background: '#ffa502' }}
+                            onClick={() => setShowShop(true)}
+                        >
+                            ショップ
+                        </button>
+                        <button
+                            className={styles.summonButton}
+                            style={{ flex: 1, padding: '8px', fontSize: '0.9rem', background: isPurgeMode ? '#ff4757' : '#70a1ff' }}
+                            onClick={() => setIsPurgeMode(!isPurgeMode)}
+                        >
+                            {isPurgeMode ? '消去中...' : '消去'}
+                        </button>
+                        <button
+                            className={styles.summonButton}
+                            style={{ flex: 1, padding: '8px', fontSize: '0.9rem', background: '#2ed573' }}
+                            onClick={handleShuffle}
+                        >
+                            混ぜる
+                        </button>
                     </div>
-                ))}
-            </div>
 
-            <DragOverlay>
-                {activeItem ? (
-                    <div className={`${styles.dragOverlay} ${styles[`tier-${activeItem.tier}`]}`}>
-                        {activeItem.tier <= 5 ? (
-                            <img
-                                src={`/assets/creatures/creature_t${activeItem.tier}.png`}
-                                style={{ width: '85%', height: '85%', objectFit: 'contain' }}
-                                alt={`Tier ${activeItem.tier}`}
-                            />
-                        ) : (
-                            `T${activeItem.tier}`
-                        )}
-                    </div>
-                ) : null}
-            </DragOverlay>
+                    <button
+                        className={styles.summonButton}
+                        disabled={mana < 10}
+                        onClick={() => {
+                            const cost = 10;
+                            // Check empty
+                            let hasSpace = false;
+                            for (let r of grid) if (r.some(c => !c.item && !c.isLocked)) hasSpace = true;
 
-            {/* CONTROLS */}
-            <div className={styles.controls}>
-                <button
-                    className={styles.summonButton}
-                    disabled={mana < 10}
-                    onClick={() => {
-                        const cost = 10;
-                        // Check empty
-                        let hasSpace = false;
-                        for (let r of grid) if (r.some(c => !c.item && !c.isLocked)) hasSpace = true;
-
-                        if (!hasSpace) {
-                            alert("いっぱい！");
-                            return;
-                        }
-
-                        if (consumeMana(cost)) {
-                            const newGrid = [...grid.map(row => [...row.map(cell => ({ ...cell }))])];
-                            const emptyCells = [];
-                            for (let y = 0; y < newGrid.length; y++) {
-                                for (let x = 0; x < newGrid[0].length; x++) {
-                                    if (!newGrid[y][x].item && !newGrid[y][x].isLocked) emptyCells.push({ x, y });
-                                }
+                            if (!hasSpace) {
+                                alert("いっぱい！");
+                                return;
                             }
-                            const target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-                            newGrid[target.y][target.x].item = {
-                                id: generateId(),
-                                tier: 1,
-                                type: 'creature'
-                            };
-                            setGrid(newGrid);
-                            setMps(calculateMps(newGrid));
-                            triggerImpact(ImpactStyle.Light);
-                            SoundManager.getInstance().play('pop', 1.0); // Use pop or similar
-                        }
-                    }}
-                >
-                    召喚 (10 マナ)
-                </button>
-            </div>
-        </DndContext>
+
+                            if (consumeMana(cost)) {
+                                const newGrid = [...grid.map(row => [...row.map(cell => ({ ...cell }))])];
+                                const emptyCells = [];
+                                for (let y = 0; y < newGrid.length; y++) {
+                                    for (let x = 0; x < newGrid[0].length; x++) {
+                                        if (!newGrid[y][x].item && !newGrid[y][x].isLocked) emptyCells.push({ x, y });
+                                    }
+                                }
+                                const target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+
+                                // Determine Tier based on Upgrades
+                                const probs = getSummonProbabilities(upgrades.summonLuck);
+                                const rand = Math.random();
+                                let tier = 1;
+
+                                // Logic: T3 if rand < p.t3
+                                // T2 if rand >= p.t3 && rand < p.t3 + p.t2
+                                // T1 otherwise
+                                if (rand < probs.tier3) {
+                                    tier = 3;
+                                } else if (rand < probs.tier3 + probs.tier2) {
+                                    tier = 2;
+                                } else {
+                                    tier = 1;
+                                }
+
+                                newGrid[target.y][target.x].item = {
+                                    id: generateId(),
+                                    tier: tier as any,
+                                    type: 'creature'
+                                };
+                                setGrid(newGrid);
+                                setMps(calculateMps(newGrid));
+                                triggerImpact(ImpactStyle.Light);
+                                SoundManager.getInstance().play('pop', 1.0);
+                            }
+                        }}
+                    >
+                        召喚 (10 マナ)
+                    </button>
+                </div>
+
+                {/* Helper Text for Purge Mode */}
+                {isPurgeMode && (
+                    <div style={{ position: 'fixed', bottom: '80px', left: '0', width: '100%', textAlign: 'center', color: '#ff4757', fontWeight: 'bold', textShadow: '0 0 5px black', pointerEvents: 'none' }}>
+                        アイテムをタップして消去 ({PURGE_COST} マナ)
+                    </div>
+                )}
+            </DndContext>
+        </>
     );
 };
