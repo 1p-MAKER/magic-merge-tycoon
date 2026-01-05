@@ -122,7 +122,7 @@ export const GameGrid: React.FC = () => {
         if (matches.length >= 3) {
             // Start Chain Reaction
             // We pass the grid *after* the move, so the item is at toData (target)
-            await processMergeChain(newGrid, fromData.x, fromData.y, toData.x, toData.y);
+            await processMergeChain(newGrid, toData.x, toData.y);
         } else {
             // Just a move, no merge
             setGrid(newGrid);
@@ -135,8 +135,6 @@ export const GameGrid: React.FC = () => {
     // Recursive Chain Function (Phase 11 Logic)
     const processMergeChain = async (
         startGrid: GridState,
-        sourceX: number,
-        sourceY: number,
         targetX: number,
         targetY: number
     ) => {
