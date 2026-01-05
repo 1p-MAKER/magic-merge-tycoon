@@ -37,19 +37,6 @@ export const EconomyProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     return (
         <EconomyContext.Provider value={{ mana, addMana, consumeMana, mps, setMps }}>
-            <div className="economy-hud" style={{
-                position: 'fixed',
-                top: 20,
-                left: 20,
-                color: '#4ecdc4',
-                fontSize: '24px',
-                fontWeight: 'bold',
-                textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                zIndex: 1000
-            }}>
-                <div>Mana: {Math.floor(mana)}</div>
-                <div style={{ fontSize: '14px', opacity: 0.8 }}>MPS: {mps}/s</div>
-            </div>
             {children}
         </EconomyContext.Provider>
     );

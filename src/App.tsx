@@ -4,14 +4,27 @@ import { GameGrid } from './features/core/components/GameGrid'
 import { EconomyProvider } from './features/economy/context/EconomyContext'
 import { ThemeProvider } from './features/visuals/context/ThemeContext'
 
+import { HUD } from './features/ui/components/HUD'
+
 function App() {
   return (
     <div className="app-container">
       <ThemeProvider>
-        <div className="glass-panel" style={{ padding: '2rem 4rem', marginBottom: '2rem' }}>
-          <h1 style={{ margin: 0, fontSize: '2rem', textShadow: '0 0 10px var(--color-accent)' }}>Magic Merge Tycoon</h1>
+        {/* Compact Title with Safe Area padding */}
+        <div style={{
+          paddingTop: 'env(safe-area-inset-top)',
+          marginTop: '1rem',
+          marginBottom: '1rem'
+        }}>
+          <h1 style={{
+            margin: 0,
+            fontSize: '1.8rem',
+            textShadow: '0 0 10px var(--color-accent)'
+          }}>Magic Merge</h1>
         </div>
+
         <EconomyProvider>
+          <HUD />
           <GameGrid />
         </EconomyProvider>
       </ThemeProvider>
