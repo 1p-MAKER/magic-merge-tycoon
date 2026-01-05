@@ -5,7 +5,13 @@
     width: 100%;
     max-width: 500px;
     margin: 0 auto;
-    padding: 0.5rem 1rem;
+    /* Use max() to ensure at least 1rem padding, or more if safe area is large */
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(2rem, env(safe-area-inset-right));
+    /* Extra right padding for curve */
+
     background: var(--color-glass-bg);
     border: 1px solid var(--color-glass-border);
     backdrop-filter: blur(8px);
@@ -13,6 +19,8 @@
     border-radius: 12px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     color: var(--color-text-primary);
+    box-sizing: border-box;
+    /* Critical for padding not to exceed width */
 
     /* Sticky top to ensure visibility but respect safe area */
     position: sticky;
