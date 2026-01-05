@@ -100,7 +100,7 @@ export const GameGrid: React.FC = () => {
         setActiveItem(item);
     };
 
-    const handleDragEnd = (event: DragEndEvent) => {
+    const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
         setActiveItem(null);
 
@@ -112,34 +112,90 @@ export const GameGrid: React.FC = () => {
         if (!fromData || !toData) return;
         if (fromData.x === toData.x && fromData.y === toData.y) return;
 
-        // 1. Move the item
+        // 1. Move the item (Standard Move)
         let newGrid = moveItemInGrid(grid, fromData.x, fromData.y, toData.x, toData.y);
 
-        // 2. Check for Merge at the destination (Target Cell)
+        // 2. Check for Initial Merge at Destination
         const targetCell = newGrid[toData.y][toData.x];
         const matches = checkMatches(newGrid, targetCell);
 
-        // 3. Execute Merge if matches found
         if (matches.length >= 3) {
-            console.log("Merge found!", matches.length);
-            const mergeResult = executeMerge(newGrid, matches, targetCell);
-            if (mergeResult) {
-                newGrid = mergeResult.newGrid;
+            // Start Chain Reaction
+            // We pass the grid *after* the move, so the item is at toData (target)
+            await processMergeChain(newGrid, fromData.x, fromData.y, toData.x, toData.y);
+        } else {
+            // Just a move, no merge
+            setGrid(newGrid);
+            setMps(calculateMps(newGrid));
+        }
+    };
 
-                // ASMR Triggers
+
+
+    // Recursive Chain Function (Phase 11 Logic)
+    const processMergeChain = async (
+        startGrid: GridState,
+        sourceX: number,
+        sourceY: number,
+        targetX: number,
+        targetY: number
+    ) => {
+        let gridState = startGrid;
+
+        // 1. Initial Match & Merge is triggered by the caller (handleDragEnd), 
+        // OR we handle the *first* merge here?
+        // In Phase 6, `executeMerge` returns a new grid with the items removed and target upgraded.
+        // Let's reuse `executeMerge` for the chain steps!
+
+        // Step 1: Handle the INITIAL merge (triggered by the drop)
+        // The item has already been moved to [targetX, targetY] by moveItemInGrid in handleDragEnd.
+
+        let activeX = targetX;
+        let activeY = targetY;
+        let comboCount = 0;
+
+        // Loop for Chain
+        while (true) {
+            const targetCell = gridState[activeY][activeX];
+            if (!targetCell.item) break; // Should not happen if logic is correct
+
+            const matches = checkMatches(gridState, targetCell);
+
+            if (matches.length >= 3) {
+                // Execute Merge
+                comboCount++;
+                console.log(`Chain Step: Combo ${comboCount}, Matches: ${matches.length}`);
+
+                // Use existing helper
+                const result = executeMerge(gridState, matches, targetCell);
+                if (!result) break; // Should not happen
+
+                gridState = result.newGrid;
+
+                // Visual/Audio Feedback
+                // Pitch shift based on combo
+                SoundManager.getInstance().play('merge', 1.0 + (comboCount * 0.2));
                 triggerImpact(ImpactStyle.Medium);
-                // Pitch increases with match size? Or combo?
-                // For now, simple pitch shift based on Match Count (3->1.0, 5->1.2)
-                const pitch = 1.0 + (matches.length - 3) * 0.1;
-                SoundManager.getInstance().play('merge', pitch);
+
+                // Update Grid State to show this step
+                setGrid([...gridState.map(row => [...row.map(c => ({ ...c }))])]);
+
+                // Wait for animation/pacing
+                await new Promise(r => setTimeout(r, 400));
+
+                // The merged item is now at activeX, activeY (targetCell position).
+                // It has a new Tier.
+                // We restart the loop to check matches for THIS new item.
+                // activeX/Y remain the same.
+            } else {
+                break; // No more matches, chain ends
             }
         }
 
-        setGrid(newGrid);
-        // Recalculate MPS after any move/merge
-        setMps(calculateMps(newGrid));
+        // Final State Update
+        setGrid(gridState);
+        setMps(calculateMps(gridState));
     };
-
 
     return (
         <DndContext
