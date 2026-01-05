@@ -44,7 +44,13 @@ export const GridCell: React.FC<GridCellProps> = ({ cell, onClick }) => {
                     {...attributes}
                     className={`${styles.item} ${styles[`tier-${cell.item.tier}`]}`}
                 >
-                    {cell.item.tier <= 5 ? (
+                    {cell.item.type === 'enemy' ? (
+                        <img
+                            src={`/assets/enemies/enemy_shadow_slime.png`}
+                            className={styles.itemImage}
+                            alt="Shadow Slime"
+                        />
+                    ) : cell.item.tier <= 5 ? (
                         <img
                             src={`/assets/creatures/creature_t${cell.item.tier}.png`}
                             className={styles.itemImage}

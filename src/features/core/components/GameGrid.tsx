@@ -102,9 +102,13 @@ export const GameGrid: React.FC = () => {
     );
 
     const handleDragStart = (event: DragStartEvent) => {
-        if (isPurgeMode) return; // Disable drag in purge mode
+        if (isPurgeMode) return;
         const { active } = event;
         const { item } = active.data.current as { item: GridItem };
+
+        // Prevent dragging enemies
+        if (item.type === 'enemy') return;
+
         setActiveItem(item);
     };
 
@@ -177,6 +181,31 @@ export const GameGrid: React.FC = () => {
                 if (!result) break; // Should not happen
 
                 gridState = result.newGrid;
+
+                // Check 3: Check for Enemy Defeat (Adjacent)
+                // Check neighbors (Up, Down, Left, Right)
+                const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
+                let enemyDefeated = false;
+
+                directions.forEach(([dx, dy]) => {
+                    const nx = targetCell.x + dx;
+                    const ny = targetCell.y + dy;
+                    if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
+                        const neighbor = gridState[ny][nx];
+                        if (neighbor.item && neighbor.item.type === 'enemy') {
+                            // Defeat Enemy!
+                            gridState[ny][nx].item = null;
+                            addMana(50); // Reward
+                            enemyDefeated = true;
+                            // Visual feedback could be here
+                        }
+                    }
+                });
+
+                if (enemyDefeated) {
+                    triggerImpact(ImpactStyle.Heavy);
+                    SoundManager.getInstance().play('pop', 0.5); // Reuse pop for now
+                }
 
                 // Visual/Audio Feedback
                 // Pitch shift based on combo
@@ -262,7 +291,8 @@ export const GameGrid: React.FC = () => {
         if (!isPurgeMode) return;
         if (!cell.item) return;
 
-        if (consumeMana(PURGE_COST)) {
+        // Allow purging enemies
+        if (cell.item.type === 'enemy' || consumeMana(PURGE_COST)) {
             const newGrid = [...grid.map(row => [...row.map(c => ({ ...c }))])];
             newGrid[cell.y][cell.x].item = null;
             setGrid(newGrid);
@@ -301,14 +331,22 @@ export const GameGrid: React.FC = () => {
                 <DragOverlay>
                     {activeItem ? (
                         <div className={`${styles.dragOverlay} ${styles[`tier-${activeItem.tier}`]}`}>
-                            {activeItem.tier <= 5 ? (
-                                <img
-                                    src={`/assets/creatures/creature_t${activeItem.tier}.png`}
-                                    style={{ width: '85%', height: '85%', objectFit: 'contain' }}
-                                    alt={`Tier ${activeItem.tier}`}
-                                />
+                            {activeItem.type === 'creature' ? (
+                                activeItem.tier <= 5 ? (
+                                    <img
+                                        src={`/assets/creatures/creature_t${activeItem.tier}.png`}
+                                        style={{ width: '85%', height: '85%', objectFit: 'contain' }}
+                                        alt={`Tier ${activeItem.tier}`}
+                                    />
+                                ) : (
+                                    `T${activeItem.tier}`
+                                )
                             ) : (
-                                `T${activeItem.tier}`
+                                <img
+                                    src={`/assets/enemies/enemy_t${activeItem.tier}.png`} // Assuming enemy assets
+                                    style={{ width: '85%', height: '85%', objectFit: 'contain' }}
+                                    alt={`Enemy T${activeItem.tier}`}
+                                />
                             )}
                         </div>
                     ) : null}
@@ -365,26 +403,24 @@ export const GameGrid: React.FC = () => {
                                 }
                                 const target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
 
-                                // Determine Tier based on Upgrades
+                                // Determine Tier/Type based on Upgrades and Enemy Chance
                                 const probs = getSummonProbabilities(upgrades.summonLuck);
-                                const rand = Math.random();
                                 let tier = 1;
+                                let type: 'creature' | 'enemy' = 'creature';
 
-                                // Logic: T3 if rand < p.t3
-                                // T2 if rand >= p.t3 && rand < p.t3 + p.t2
-                                // T1 otherwise
-                                if (rand < probs.tier3) {
-                                    tier = 3;
-                                } else if (rand < probs.tier3 + probs.tier2) {
-                                    tier = 2;
+                                // 5% Chance for Enemy
+                                if (Math.random() < 0.05) {
+                                    type = 'enemy';
+                                    tier = 1; // Enemy doesn't really use tier logic yet
                                 } else {
                                     tier = 1;
                                 }
 
                                 newGrid[target.y][target.x].item = {
                                     id: generateId(),
+                                    id: generateId(),
                                     tier: tier as any,
-                                    type: 'creature'
+                                    type: type
                                 };
                                 setGrid(newGrid);
                                 setMps(calculateMps(newGrid));

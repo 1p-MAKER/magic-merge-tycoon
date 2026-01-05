@@ -1,5 +1,5 @@
 export type ItemTier = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-export type ItemType = 'creature' | 'plant' | 'rock' | 'chest';
+export type ItemType = 'creature' | 'plant' | 'rock' | 'chest' | 'enemy';
 
 export interface GridItem {
   id: string; // Unique identifier for React keys and logic
