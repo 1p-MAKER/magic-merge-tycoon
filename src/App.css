@@ -13,6 +13,9 @@
   align-items: center;
   min-height: 100vh;
   box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
 }
 
 .app-container {
