@@ -1,0 +1,80 @@
+export class SoundManager {
+    private static instance: SoundManager;
+    private audioContext: AudioContext | null = null;
+    private buffers: Map<string, AudioBuffer> = new Map();
+    private isMuted: boolean = false;
+
+    private constructor() {
+        // Initialize AudioContext on user interaction usually, but here on load for simplicity (might need resume)
+        try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            this.audioContext = new AudioContextClass();
+        } catch (e) {
+            console.error("Web Audio API not supported", e);
+        }
+    }
+
+    public static getInstance(): SoundManager {
+        if (!SoundManager.instance) {
+            SoundManager.instance = new SoundManager();
+        }
+        return SoundManager.instance;
+    }
+
+    public async loadSound(name: string, url: string): Promise<void> {
+        if (!this.audioContext) return;
+        try {
+            const response = await fetch(url);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            this.buffers.set(name, audioBuffer);
+        } catch (e) {
+            console.error(`Failed to load sound: ${name}`, e);
+        }
+    }
+
+    // Generate a synthetic "crystal" sound if assets are missing
+    public playSyntheticMerge(pitchMultiplier: number = 1.0) {
+        if (!this.audioContext || this.isMuted) return;
+        if (this.audioContext.state === 'suspended') this.audioContext.resume();
+
+        const osc = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+
+        osc.type = 'sine';
+        // Base frequency 440Hz -> Scaled by multiplier
+        osc.frequency.setValueAtTime(440 * pitchMultiplier, this.audioContext.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880 * pitchMultiplier, this.audioContext.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+
+        osc.start();
+        osc.stop(this.audioContext.currentTime + 0.3);
+    }
+
+    public play(name: string, pitch: number = 1.0) {
+        if (!this.audioContext || this.isMuted) return;
+
+        // Fallback to synthetic if not loaded
+        if (!this.buffers.has(name)) {
+            if (name === 'merge') this.playSyntheticMerge(pitch);
+            return;
+        }
+
+        const source = this.audioContext.createBufferSource();
+        source.buffer = this.buffers.get(name)!;
+        source.playbackRate.value = pitch;
+
+        const gainNode = this.audioContext.createGain();
+        gainNode.gain.value = 0.5;
+
+        source.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+
+        source.start(0);
+    }
+}

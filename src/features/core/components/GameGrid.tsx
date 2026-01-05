@@ -1,8 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, PointerSensor, useSensor, useSensors, TouchSensor, MouseSensor } from '@dnd-kit/core';
 import { GridCell as GridCellComponent } from './GridCell';
 import { type GridState, GRID_HEIGHT, GRID_WIDTH, generateId, type GridItem, type GridCell } from '../logic/types';
 import { moveItemInGrid, checkMatches, executeMerge } from '../logic/mergeUtils';
+import { useEconomy } from '../../economy/context/EconomyContext';
+import { calculateMps } from '../../economy/logic/economyUtils';
+import { SoundManager } from '../../asmr/logic/SoundManager';
+import { useHaptics } from '../../asmr/hooks/useHaptics';
+import { ImpactStyle } from '@capacitor/haptics';
 import styles from './GameGrid.module.css';
 
 // Initial Helper
@@ -29,6 +34,13 @@ const createInitialGrid = (): GridState => {
 export const GameGrid: React.FC = () => {
     const [grid, setGrid] = useState<GridState>(createInitialGrid());
     const [activeItem, setActiveItem] = useState<GridItem | null>(null);
+    const { setMps } = useEconomy();
+    const { triggerImpact } = useHaptics();
+
+    // Initial MPS calc
+    useEffect(() => {
+        setMps(calculateMps(grid));
+    }, []); // Run once on mount
 
     // Sensors for better touch/mouse handling
     const sensors = useSensors(
@@ -59,13 +71,6 @@ export const GameGrid: React.FC = () => {
         let newGrid = moveItemInGrid(grid, fromData.x, fromData.y, toData.x, toData.y);
 
         // 2. Check for Merge at the destination (Target Cell)
-        // We check the 'to' cell because that's where the item landed (or was swapped to).
-        // Note: If swapped, we might need to check both checks? For now, let's focus on the moved item.
-
-        // The item that was moved is now at [toY][toX] (or swapped out, but usually the active item lands there)
-        // Wait, moveItemInGrid performs a swap. 
-        // If we move A to B. A is now at B. B is at A.
-        // Check matches for A at B.
         const targetCell = newGrid[toData.y][toData.x];
         const matches = checkMatches(newGrid, targetCell);
 
@@ -75,12 +80,21 @@ export const GameGrid: React.FC = () => {
             const mergeResult = executeMerge(newGrid, matches, targetCell);
             if (mergeResult) {
                 newGrid = mergeResult.newGrid;
-                // TODO: Play SFX, Particles here
+
+                // ASMR Triggers
+                triggerImpact(ImpactStyle.Medium);
+                // Pitch increases with match size? Or combo?
+                // For now, simple pitch shift based on Match Count (3->1.0, 5->1.2)
+                const pitch = 1.0 + (matches.length - 3) * 0.1;
+                SoundManager.getInstance().play('merge', pitch);
             }
         }
 
         setGrid(newGrid);
+        // Recalculate MPS after any move/merge
+        setMps(calculateMps(newGrid));
     };
+
 
     return (
         <DndContext
