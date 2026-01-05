@@ -214,7 +214,15 @@ export const GameGrid: React.FC = () => {
             <DragOverlay>
                 {activeItem ? (
                     <div className={`${styles.dragOverlay} ${styles[`tier-${activeItem.tier}`]}`}>
-                        T{activeItem.tier}
+                        {activeItem.tier <= 5 ? (
+                            <img
+                                src={`/assets/creatures/creature_t${activeItem.tier}.png`}
+                                style={{ width: '85%', height: '85%', objectFit: 'contain' }}
+                                alt={`Tier ${activeItem.tier}`}
+                            />
+                        ) : (
+                            `T${activeItem.tier}`
+                        )}
                     </div>
                 ) : null}
             </DragOverlay>
