@@ -46,7 +46,7 @@ export const GameGrid: React.FC = () => {
     });
 
     const [activeItem, setActiveItem] = useState<GridItem | null>(null);
-    const { mana, addMana, setMps } = useEconomy();
+    const { mana, addMana, consumeMana, setMps } = useEconomy();
     const { triggerImpact } = useHaptics();
 
     // Handle Offline Earnings & Initial Mana Load
@@ -164,6 +164,47 @@ export const GameGrid: React.FC = () => {
                     </div>
                 ) : null}
             </DragOverlay>
+
+            {/* CONTROLS */}
+            <div className={styles.controls}>
+                <button
+                    className={styles.summonButton}
+                    disabled={mana < 10}
+                    onClick={() => {
+                        const cost = 10;
+                        // Check empty
+                        let hasSpace = false;
+                        for (let r of grid) if (r.some(c => !c.item && !c.isLocked)) hasSpace = true;
+
+                        if (!hasSpace) {
+                            alert("No space!");
+                            return;
+                        }
+
+                        if (consumeMana(cost)) {
+                            const newGrid = [...grid.map(row => [...row.map(cell => ({ ...cell }))])];
+                            const emptyCells = [];
+                            for (let y = 0; y < newGrid.length; y++) {
+                                for (let x = 0; x < newGrid[0].length; x++) {
+                                    if (!newGrid[y][x].item && !newGrid[y][x].isLocked) emptyCells.push({ x, y });
+                                }
+                            }
+                            const target = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                            newGrid[target.y][target.x].item = {
+                                id: generateId(),
+                                tier: 1,
+                                type: 'creature'
+                            };
+                            setGrid(newGrid);
+                            setMps(calculateMps(newGrid));
+                            triggerImpact(ImpactStyle.Light);
+                            SoundManager.getInstance().play('pop', 1.0); // Use pop or similar
+                        }
+                    }}
+                >
+                    Summon (10 Mana)
+                </button>
+            </div>
         </DndContext>
     );
 };

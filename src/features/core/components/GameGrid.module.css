@@ -17,56 +17,99 @@
 }
 
 .dragOverlay {
-    width: 54px;
-    /* Slightly smaller than cell to see behind? Or same size. */
-    height: 54px;
-    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    background-color: #ffd700;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    color: white;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     cursor: grabbing;
 }
 
-/* Reusing tier colors for Overlay */
+/* Tier Colors for Drag Overlay - Match GridCell logic or keep simple */
 .tier-1 {
-    background: #4ecdc4;
+    background-color: #a5d6a7;
 }
 
 .tier-2 {
-    background: #45b7aa;
+    background-color: #81c784;
 }
 
 .tier-3 {
-    background: #3b9e90;
+    background-color: #66bb6a;
 }
 
 .tier-4 {
-    background: #ff6b6b;
+    background-color: #4caf50;
 }
 
 .tier-5 {
-    background: #ee5253;
+    background-color: #43a047;
 }
 
 .tier-6 {
-    background: #fca5a5;
+    background-color: #388e3c;
 }
 
 .tier-7 {
-    background: #fcd34d;
+    background-color: #2e7d32;
 }
 
 .tier-8 {
-    background: #fbbf24;
+    background-color: #1b5e20;
 }
 
 .tier-9 {
-    background: #f59e0b;
+    background-color: #ffa726;
 }
 
+/* Special? */
 .tier-10 {
-    background: #b45309;
+    background-color: #ff6f00;
+}
+
+/* Special? */
+
+
+/* CONTROLS AREA */
+.controls {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+.summonButton {
+    background: var(--color-accent);
+    color: var(--color-bg-primary);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    width: 100%;
+    max-width: 300px;
+}
+
+.summonButton:disabled {
+    background: rgba(128, 128, 128, 0.3);
+    color: rgba(255, 255, 255, 0.4);
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.summonButton:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    filter: brightness(1.1);
+}
+
+.summonButton:active {
+    transform: translateY(1px);
 }
