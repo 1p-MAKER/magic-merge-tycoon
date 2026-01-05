@@ -71,7 +71,7 @@ export const GameGrid: React.FC = () => {
             const earned = Math.floor(currentMps * offlineEarnings);
             if (earned > 0) {
                 addMana(earned);
-                alert(`Welcome back! You earned ${earned} Mana while offline.`);
+                alert(`お帰りなさい！\nオフライン中に ${earned} マナを獲得しました。`);
             }
         }
 
