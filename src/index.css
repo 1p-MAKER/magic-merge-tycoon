@@ -1,16 +1,44 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Base Palette - Day/Purified (Emerald, Cyan, White) */
+  --color-bg-primary: #e0f7fa;
+  --color-bg-gradient: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
+  --color-text-primary: #006064;
+  --color-accent: #00bcd4;
+  --color-glass-bg: rgba(255, 255, 255, 0.25);
+  --color-glass-border: rgba(255, 255, 255, 0.5);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+
+  /* Grid & Items */
+  --grid-bg: rgba(255, 255, 255, 0.3);
+  --cell-bg: rgba(255, 255, 255, 0.1);
+  --cell-locked: rgba(0, 0, 0, 0.1);
+
+  font-family: 'Outfit', Inter, system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  -moz-osx-smoothing: grayscale;
+}
+
+/* Night Mode Overrides */
+:root.night-mode {
+  --color-bg-primary: #121212;
+  --color-bg-gradient: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+  --color-text-primary: #e0f7fa;
+  --color-accent: #4dd0e1;
+  --color-glass-bg: rgba(0, 0, 0, 0.35);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+
+  --grid-bg: rgba(0, 0, 0, 0.2);
+  --cell-bg: rgba(255, 255, 255, 0.05);
 }
 
 a {
@@ -18,6 +46,7 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
+
 a:hover {
   color: #535bf2;
 }
@@ -28,6 +57,8 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--color-bg-gradient);
+  transition: background 0.5s ease;
 }
 
 h1 {
@@ -46,9 +77,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -59,10 +92,22 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: var(--color-glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-glass);
 }

@@ -1,24 +1,25 @@
 .cell {
   width: 60px;
   height: 60px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  background-color: var(--cell-bg);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.1s;
 }
 
 .cell.over {
   background-color: rgba(255, 255, 255, 0.3);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 15px var(--color-accent);
 }
 
 .cell.locked {
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: var(--cell-locked);
   cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .item {
@@ -31,7 +32,8 @@
   font-weight: bold;
   color: white;
   cursor: grab;
-  touch-action: none; /* Crucial for Dnd-kit on mobile */
+  touch-action: none;
+  /* Crucial for Dnd-kit on mobile */
   user-select: none;
 }
 
@@ -40,13 +42,42 @@
 }
 
 /* Temporary Tier Colors for Debugging */
-.tier-1 { background: #4ecdc4; }
-.tier-2 { background: #45b7aa; }
-.tier-3 { background: #3b9e90; }
-.tier-4 { background: #ff6b6b; }
-.tier-5 { background: #ee5253; }
-.tier-6 { background: #fca5a5; }
-.tier-7 { background: #fcd34d; }
-.tier-8 { background: #fbbf24; }
-.tier-9 { background: #f59e0b; }
-.tier-10 { background: #b45309; }
+.tier-1 {
+  background: #4ecdc4;
+}
+
+.tier-2 {
+  background: #45b7aa;
+}
+
+.tier-3 {
+  background: #3b9e90;
+}
+
+.tier-4 {
+  background: #ff6b6b;
+}
+
+.tier-5 {
+  background: #ee5253;
+}
+
+.tier-6 {
+  background: #fca5a5;
+}
+
+.tier-7 {
+  background: #fcd34d;
+}
+
+.tier-8 {
+  background: #fbbf24;
+}
+
+.tier-9 {
+  background: #f59e0b;
+}
+
+.tier-10 {
+  background: #b45309;
+}
