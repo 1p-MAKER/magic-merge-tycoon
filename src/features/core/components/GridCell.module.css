@@ -94,3 +94,9 @@
 .tier-10 {
   background: #b45309;
 }
+
+.enemyItem {
+  background-color: white !important;
+  border-radius: 8px;
+  /* Match item border-radius */
+}

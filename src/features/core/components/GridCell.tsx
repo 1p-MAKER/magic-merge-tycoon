@@ -6,15 +6,16 @@ import styles from './GridCell.module.css';
 interface GridCellProps {
     cell: GridCellType;
     isSelected?: boolean;
+    id?: string;
     onClick?: () => void;
 }
 
-export const GridCell: React.FC<GridCellProps> = ({ cell, onClick }) => {
+export const GridCell: React.FC<GridCellProps> = ({ cell, id, onClick }) => {
     const cellId = `${cell.x},${cell.y}`;
 
     // Droppable handling (Accepts drops)
     const { setNodeRef: setDroppableRef, isOver } = useDroppable({
-        id: cellId,
+        id: id || cellId, // Use prop id if available, otherwise default
         data: { x: cell.x, y: cell.y },
     });
 
@@ -22,7 +23,7 @@ export const GridCell: React.FC<GridCellProps> = ({ cell, onClick }) => {
     const { attributes, listeners, setNodeRef: setDraggableRef, transform, isDragging } = useDraggable({
         id: cell.item ? cell.item.id : `empty-${cellId}`,
         data: { x: cell.x, y: cell.y, item: cell.item },
-        disabled: !cell.item || cell.isLocked,
+        disabled: !cell.item || cell.isLocked || cell.item.type === 'enemy',
     });
 
     const style = transform ? {
@@ -42,24 +43,33 @@ export const GridCell: React.FC<GridCellProps> = ({ cell, onClick }) => {
                     style={style}
                     {...listeners}
                     {...attributes}
-                    className={`${styles.item} ${styles[`tier-${cell.item.tier}`]}`}
+                    className={`${styles.item} ${styles[`tier-${cell.item.tier}`]} ${cell.item.type === 'enemy' ? styles.enemyItem : ''}`}
+                    onClick={() => {
+                        // Ensure click propagates if not dragging, but dnd-kit might capture it.
+                        // Actually, dnd-kit listeners usually capture mousedown/touchstart.
+                        // Standard click should still fire if not dragged.
+                        // But explicitly calling onClick here ensures it works.
+                        if (onClick) onClick();
+                    }}
                 >
                     {cell.item.type === 'enemy' ? (
                         <img
                             src={`/assets/enemies/enemy_shadow_slime.png`}
                             className={styles.itemImage}
+                            style={{ borderRadius: '16px' }}
                             alt="Shadow Slime"
                         />
-                    ) : cell.item.tier <= 5 ? (
+                    ) : cell.item.tier <= 10 ? (
                         <img
                             src={`/assets/creatures/creature_t${cell.item.tier}.png`}
                             className={styles.itemImage}
-                            alt={`Tier ${cell.item.tier}`}
+                            style={{ borderRadius: '16px' }}
+                            alt={`Creature T${cell.item.tier}`}
                         />
                     ) : (
-                        <span className={styles.label}>
-                            T{cell.item.tier}
-                        </span>
+                        <div className={styles.placeholder}>
+                            Lv.{cell.item.tier}
+                        </div>
                     )}
                 </div>
             )}

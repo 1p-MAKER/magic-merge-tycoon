@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, PointerSensor, useSensor, useSensors, TouchSensor, MouseSensor } from '@dnd-kit/core';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { DndContext, type DragEndEvent, DragOverlay, type DragStartEvent, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core';
 import { GridCell as GridCellComponent } from './GridCell';
-import { type GridState, GRID_HEIGHT, GRID_WIDTH, generateId, type GridItem, type GridCell } from '../logic/types';
-import { moveItemInGrid, checkMatches, executeMerge } from '../logic/mergeUtils';
+import { type GridState, GRID_HEIGHT, GRID_WIDTH, generateId, type GridItem, type GridCell, type RealmId } from '../logic/types';
+import { moveItemInGrid, checkMatches, executeMerge, getAttackRange } from '../logic/mergeUtils';
+import { processEnemyActions } from '../logic/enemyLogic';
+import { FloatingTextOverlay, type FloatingTextHandle } from '../../ui/components/FloatingTextOverlay';
+import { GameLog, type LogEntry } from '../../ui/components/GameLog';
 import { useEconomy } from '../../economy/context/EconomyContext';
 import { calculateMps } from '../../economy/logic/economyUtils';
 import { SoundManager } from '../../asmr/logic/SoundManager';
@@ -10,7 +13,14 @@ import { useHaptics } from '../../asmr/hooks/useHaptics';
 import { ImpactStyle } from '@capacitor/haptics';
 import { usePersistence } from '../../persistence/hooks/usePersistence';
 import { ShopModal } from '../../shop/components/ShopModal';
-import { getSummonProbabilities, SHUFFLE_COST, PURGE_COST } from '../../shop/logic/shopLogic';
+import { ItemModal } from '../../items/components/ItemModal';
+import {
+    calculateSummonCost,
+    calculatePurgeCost,
+    calculateEnemySpawnRate,
+    getSummonProbabilities,
+    type InventoryItemId
+} from '../../shop/logic/shopLogic';
 import styles from './GameGrid.module.css';
 
 // Initial Helper
@@ -34,6 +44,86 @@ const createInitialGrid = (): GridState => {
     return grid;
 };
 
+const createInitialRealms = (): Record<RealmId, GridState> => ({
+    plains: createInitialGrid(),
+    mine: createInitialGrid(), // Initially empty in logic, but populated if unlocked
+    sky: createInitialGrid()
+});
+
+const REALM_CONFIG: Record<RealmId, { name: string; cost: number; description: string }> = {
+    plains: { name: '平原', cost: 0, description: '穏やかな平原' },
+    mine: { name: '鉱山', cost: 50000, description: 'マナ豊富だが危険' },
+    sky: { name: '天空', cost: 500000, description: '神秘の土地' }
+};
+
+// Basic Trash Bin Component (Inline for simplicity)
+const TrashBin: React.FC<{ activeItem: GridItem | null, mana: number, cost: number }> = ({ activeItem, mana, cost }) => {
+    const { setNodeRef, isOver } = useDroppable({
+        id: 'trash-zone',
+    });
+
+    const isAffordable = mana >= cost;
+    const isActive = !!activeItem;
+    // Highlight if dragging and affordable. Red if expensive?
+    // Style: Simple box with icon.
+
+    // Determine style
+    const baseStyle: React.CSSProperties = {
+        flex: 1,
+        // height: '40px', // Removed fixed height to stretch
+        minHeight: '40px', // Ensure at least this tall
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '8px',
+        border: '2px solid #ff4757',
+        backgroundColor: '#fff0f0', // Light red background
+        color: '#ff4757', // Red text
+        transition: 'all 0.2s',
+        fontSize: '0.75rem', // Smaller text
+        fontWeight: 'bold',
+        cursor: 'default', // pointer usually implies click, default is fine
+        overflow: 'hidden',
+        whiteSpace: 'nowrap',
+        textOverflow: 'ellipsis'
+    };
+
+    if (isActive) {
+        if (isOver) {
+            // Over trash
+            if (isAffordable) {
+                baseStyle.borderColor = '#ff4757';
+                baseStyle.backgroundColor = '#ffe0e3';
+                baseStyle.color = '#ff4757';
+                baseStyle.transform = 'scale(1.05)';
+            } else {
+                baseStyle.borderColor = '#555';
+                baseStyle.backgroundColor = '#ddd';
+                baseStyle.color = '#555';
+            }
+        } else {
+            // Dragging but not over
+            baseStyle.borderColor = '#ff4757';
+            baseStyle.color = '#ff4757';
+        }
+    }
+
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={baseStyle}
+            onClick={() => {
+                if (!isActive) {
+                    alert('ここにドラッグしてね！\nマナモンをドラッグして、このゴミ箱にドロップすると消去できます。');
+                }
+            }}
+        >
+            {isActive ? (isOver ? `消去確認 (${cost.toLocaleString()}マナ)` : 'ここにドロップして消去') : `ゴミ箱 (${cost.toLocaleString()})`}
+        </div>
+    );
+};
+
 export const GameGrid: React.FC = () => {
     // We need to initialize grid lazily or handle loading state.
     // Ideally, we load synchronously from localStorage if possible, or use an effect.
@@ -41,68 +131,197 @@ export const GameGrid: React.FC = () => {
 
     const { saveGame, loadGame } = usePersistence();
 
-    // Custom Init to try loading first
-    const [grid, setGrid] = useState<GridState>(() => {
-        const { grid: loadedGrid } = loadGame();
-        return loadedGrid || createInitialGrid();
+    // Multi-Realm State
+    const [realms, setRealms] = useState<Record<RealmId, GridState>>(() => {
+        const loaded = loadGame();
+        return loaded?.realms || createInitialRealms();
     });
+    const [unlockedRealms, setUnlockedRealms] = useState<RealmId[]>(() => {
+        const loaded = loadGame();
+        return loaded?.unlockedRealms || ['plains'];
+    });
+    const [activeRealmId, setActiveRealmId] = useState<RealmId>('plains');
+
+    // setActiveGrid wrapper to update specific realm
+    const setActiveGrid = useCallback((update: GridState | ((prev: GridState) => GridState)) => {
+        setRealms(prev => {
+            const currentGrid = prev[activeRealmId];
+            const newGrid = typeof update === 'function' ? update(currentGrid) : update;
+            return { ...prev, [activeRealmId]: newGrid };
+        });
+    }, [activeRealmId]);
+
+    // Derived active grid for rendering
+    const grid = realms[activeRealmId];
+    // Alias setGrid to maintain compatibility with existing logic
+    const setGrid = setActiveGrid;
 
     const [activeItem, setActiveItem] = useState<GridItem | null>(null);
-    const { mana, addMana, consumeMana, setMps, upgrades } = useEconomy();
+    const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [boostEndTime, setBoostEndTime] = useState<number>(0);
+    const [barrierEndTime, setBarrierEndTime] = useState<number>(0);
+    const floatingTextRef = useRef<FloatingTextHandle>(null);
+
+    const { mana, addMana, consumeMana, mps, setMps, upgrades, setMpsMultiplier, inventory, addItemToInventory, useItemFromInventory, offlineStats } = useEconomy();
     const { triggerImpact } = useHaptics();
 
     // Shop & Active Skills State
     const [showShop, setShowShop] = useState(false);
-    const [isPurgeMode, setIsPurgeMode] = useState(false);
+    const [showItemModal, setShowItemModal] = useState(false);
 
     // Handle Offline Earnings & Initial Mana Load
+    // Boost & Barrier Expiry Check
     useEffect(() => {
-        const { mana: loadedMana, offlineEarnings, grid: loadedGrid } = loadGame();
-
-        // Restore Mana
-        if (loadedMana !== null) {
-            // We can't directly setMana in EconomyContext easily without exposing a setter (we only have add/consume)
-            // Hack: diff it? Or just assume addMana works relative to 0 if we assume fresh start?
-            // EconomyContext starts at 0. So adding loadedMana works.
-            // BUT, React StrictMode might double invoke.
-            // Ideally EconomyContext should handle persistence or we pass initialMana prop.
-            // Let's rely on addMana for now and trust it effectively restores it roughly.
-            // Better: We should probably clear context mana first? 
-            // For this Prototype: simple addition is fine.
-            addMana(loadedMana);
-        }
-
-        if (loadedGrid && offlineEarnings > 0) {
-            const currentMps = calculateMps(loadedGrid);
-            const earned = Math.floor(currentMps * offlineEarnings);
-            if (earned > 0) {
-                addMana(earned);
-                // Alert handled in TitleScreen
-                // alert(`お帰りなさい！\nオフライン中に ${earned} マナを獲得しました。`);
+        const interval = setInterval(() => {
+            const now = Date.now();
+            if (boostEndTime > 0) {
+                if (now < boostEndTime) {
+                    setMpsMultiplier(2);
+                } else {
+                    setMpsMultiplier(1);
+                    setBoostEndTime(0);
+                    addLog("マナブーストの効果が切れました。", "info");
+                }
+            } else {
+                setMpsMultiplier(1);
             }
-        }
 
-        // Ensure MPS is set for the loaded grid
-        setMps(calculateMps(grid));
-    }, []); // Run once
+            if (barrierEndTime > 0 && now >= barrierEndTime) {
+                setBarrierEndTime(0);
+                addLog("聖なる結界の効果が切れました。", "warning");
+            }
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [boostEndTime, barrierEndTime, setMpsMultiplier]);
+
+    // Handle Unlocking Realm
+    const handleUnlockRealm = (realmId: RealmId) => {
+        const config = REALM_CONFIG[realmId];
+        if (consumeMana(config.cost)) {
+            setUnlockedRealms(prev => [...prev, realmId]);
+            setActiveRealmId(realmId);
+            SoundManager.getInstance().play('merge', 1.5);
+            addLog(`${config.name}を開放しました！`, 'success');
+        } else {
+            alert('マナが足りません！');
+        }
+    };
 
     // Auto-Save Effect
     useEffect(() => {
         const timer = setTimeout(() => {
-            saveGame(grid, mana, upgrades);
-        }, 1000); // Debounce save every 1s
+            const specials = { boostEndTime, barrierEndTime };
+            saveGame(realms, unlockedRealms, mana, upgrades, specials, inventory, offlineStats);
+        }, 1000);
         return () => clearTimeout(timer);
-    }, [grid, mana, upgrades, saveGame]);
+    }, [realms, unlockedRealms, mana, upgrades, offlineStats, boostEndTime, barrierEndTime, inventory, saveGame]);
 
-    // Sensors for better touch/mouse handling
+    // Global MPS Calculation (Sum of all unlocked realms)
+    useEffect(() => {
+        let totalMps = 0;
+        unlockedRealms.forEach(id => {
+            let multiplier = 1;
+            if (id === 'mine') multiplier = 1.5;
+            // Sky realm special logic can go here later
+
+            totalMps += calculateMps(realms[id]) * multiplier;
+        });
+        setMps(totalMps);
+    }, [realms, unlockedRealms, setMps]);
+
+    // Initial Load Effect
+    useEffect(() => {
+        const loaded = loadGame();
+        if (!loaded) return;
+
+        const { mana: loadedMana, offlineEarnings, realms: loadedRealms, specials, inventory: loadedInventory } = loaded;
+
+        if (loadedMana !== null) addMana(loadedMana);
+
+        if (loadedInventory) {
+            Object.entries(loadedInventory).forEach(([itemId, count]) => {
+                if (count > 0) addItemToInventory(itemId as any, count);
+            });
+        }
+
+        if (specials) {
+            setBoostEndTime(specials.boostEndTime);
+            setBarrierEndTime(specials.barrierEndTime);
+            if (Date.now() < specials.barrierEndTime) {
+                addLog("聖なる結界により、不在中の敵の侵攻は阻止されました。", "success");
+            }
+        }
+
+        if (loadedRealms && offlineEarnings > 0) {
+            let totalOfflineMps = 0;
+            // Calculate total MPS from saved state to determine earnings
+            // Assuming we use loadedRealms or current state? 
+            // Current 'realms' might be initial state if useState run first, but loadGame is synchronous in useState.
+            // So 'realms' state is already loaded.
+            const currentUnlocked = loaded.unlockedRealms || ['plains'];
+            currentUnlocked.forEach(id => {
+                totalOfflineMps += calculateMps(loadedRealms[id]);
+            });
+
+            const earned = Math.floor(totalOfflineMps * offlineEarnings);
+            if (earned > 0) {
+                addMana(earned);
+                const hrs = Math.floor(offlineEarnings / 3600);
+                const mins = Math.floor((offlineEarnings % 3600) / 60);
+                addLog(`おかえりなさい！ ${hrs}時間${mins}分の放置収益: +${earned.toLocaleString()}マナ`, 'success');
+            }
+        }
+    }, []);
+
+    // Enemy AI Loop
+    const manaRef = useRef(mana);
+    useEffect(() => { manaRef.current = mana; }, [mana]);
+
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            if (activeItem) return; // Pause while dragging
+
+            setGrid(currentGrid => {
+                const { newGrid, manaLost, logs: newLogs } = processEnemyActions(currentGrid, manaRef.current);
+
+                if (manaLost > 0 || newLogs.length > 0) {
+                    setTimeout(() => {
+                        if (manaLost > 0) consumeMana(manaLost);
+                        newLogs.forEach(l => addLog(l, 'danger'));
+                        if (manaLost > 0) addLog(`マナが奪われました (-${manaLost})`, 'danger');
+                    }, 0);
+                    return newGrid;
+                }
+                return currentGrid;
+            });
+
+        }, 5000); // Every 5 seconds
+
+        return () => clearInterval(intervalId);
+    }, [activeItem, consumeMana]);
+
+    // Dnd Sensors
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), // Prevent accidental drags
-        useSensor(MouseSensor),
-        useSensor(TouchSensor)
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Must move 8px to start dragging, allows clicks
+            },
+        })
     );
 
+    const addLog = (text: string, type: 'info' | 'warning' | 'danger' | 'success' = 'info') => {
+        const now = new Date();
+        const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+        const newLog: LogEntry = {
+            id: generateId(),
+            timestamp,
+            text,
+            type,
+        };
+        setLogs(prev => [newLog, ...prev.slice(0, 49)]);
+    };
+
     const handleDragStart = (event: DragStartEvent) => {
-        if (isPurgeMode) return;
         const { active } = event;
         const { item } = active.data.current as { item: GridItem };
 
@@ -117,6 +336,45 @@ export const GameGrid: React.FC = () => {
         setActiveItem(null);
 
         if (!over) return;
+
+        // --- 0. Trash Bin Drop ---
+        if (over.id === 'trash-zone') {
+            const dragItem = active.data.current?.item as GridItem;
+            // Prevent deleting enemies (safety check, though dragging them restricted anyway)
+            if (dragItem?.type === 'enemy') return;
+
+            const cost = calculatePurgeCost(mps);
+            if (consumeMana(cost)) {
+                SoundManager.getInstance().play('purge');
+                const fromData = active.data.current as { x: number, y: number };
+                // Remove item from grid
+                const newGrid = [...grid.map(row => [...row.map(c => ({ ...c }))])];
+                newGrid[fromData.y][fromData.x].item = null;
+                setGrid(newGrid);
+                setMps(calculateMps(newGrid));
+                triggerImpact(ImpactStyle.Medium);
+
+                // Show purge text
+                const cellId = `cell-${fromData.x}-${fromData.y}`;
+                const element = document.getElementById(cellId);
+                if (element && floatingTextRef.current) {
+                    const rect = element.getBoundingClientRect();
+                    const container = document.querySelector(`.${styles.gridContainer}`);
+                    const containerRect = container?.getBoundingClientRect() || { left: 0, top: 0 };
+
+                    floatingTextRef.current.addText(
+                        rect.left - containerRect.left + rect.width / 2,
+                        rect.top - containerRect.top + rect.height / 2,
+                        `-${cost}マナ`,
+                        "#ff4757" // Red
+                    );
+                }
+                addLog(`アイテムを消去しました。 (${cost.toLocaleString()}マナ消費)`, 'warning');
+            } else {
+                alert("マナが足りません！");
+            }
+            return;
+        }
 
         const fromData = active.data.current as { x: number, y: number };
         const toData = over.data.current as { x: number, y: number };
@@ -142,7 +400,22 @@ export const GameGrid: React.FC = () => {
         }
     };
 
+    const showFloatingText = (x: number, y: number, text: string, color: string) => {
+        const cellId = `cell-${x}-${y}`;
+        const element = document.getElementById(cellId);
+        if (element && floatingTextRef.current) {
+            const rect = element.getBoundingClientRect();
+            const container = document.querySelector(`.${styles.gridContainer}`);
+            const containerRect = container?.getBoundingClientRect() || { left: 0, top: 0 };
 
+            floatingTextRef.current.addText(
+                rect.left - containerRect.left + rect.width / 2,
+                rect.top - containerRect.top + rect.height / 2,
+                text,
+                color
+            );
+        }
+    };
 
     // Recursive Chain Function (Phase 11 Logic)
     const processMergeChain = async (
@@ -163,6 +436,7 @@ export const GameGrid: React.FC = () => {
         let activeX = targetX;
         let activeY = targetY;
         let comboCount = 0;
+        let totalManaGained = 0;
 
         // Loop for Chain
         while (true) {
@@ -182,27 +456,29 @@ export const GameGrid: React.FC = () => {
 
                 gridState = result.newGrid;
 
-                // Check 3: Check for Enemy Defeat (Adjacent)
-                // Check neighbors (Up, Down, Left, Right)
-                const directions = [[0, 1], [0, -1], [1, 0], [-1, 0]];
-                let enemyDefeated = false;
+                // Show Merge Text
+                showFloatingText(activeX, activeY, "MERGE!", "#ffa502");
+                addLog(`ランク${result.createdItems[0].tier}のマナモンを合成！`, 'success');
 
-                directions.forEach(([dx, dy]) => {
-                    const nx = targetCell.x + dx;
-                    const ny = targetCell.y + dy;
-                    if (nx >= 0 && nx < GRID_WIDTH && ny >= 0 && ny < GRID_HEIGHT) {
-                        const neighbor = gridState[ny][nx];
-                        if (neighbor.item && neighbor.item.type === 'enemy') {
-                            // Defeat Enemy!
-                            gridState[ny][nx].item = null;
-                            addMana(50); // Reward
-                            enemyDefeated = true;
-                            // Visual feedback could be here
-                        }
+                // Check 3: Check for Enemy Defeat (AoE based on Tier)
+                const attackTargets = getAttackRange(targetCell.x, targetCell.y, result.createdItems[0].tier, GRID_WIDTH, GRID_HEIGHT);
+                let enemyDefeatedCount = 0;
+
+                attackTargets.forEach(({ x, y }) => {
+                    const cell = gridState[y][x];
+                    if (cell.item && cell.item.type === 'enemy') {
+                        // Defeat Enemy!
+                        gridState[y][x].item = null;
+                        const reward = 50 * result.createdItems[0].tier; // Tier-based reward
+                        addMana(reward);
+                        totalManaGained += reward;
+                        enemyDefeatedCount++;
+                        showFloatingText(x, y, `+${reward}マナ`, "#2ed573");
+                        addLog(`敵を撃破！ +${reward}マナ`, 'success');
                     }
                 });
 
-                if (enemyDefeated) {
+                if (enemyDefeatedCount > 0) {
                     triggerImpact(ImpactStyle.Heavy);
                     SoundManager.getInstance().play('pop', 0.5); // Reuse pop for now
                 }
@@ -213,16 +489,7 @@ export const GameGrid: React.FC = () => {
                 triggerImpact(ImpactStyle.Medium);
 
                 if (comboCount > 1) {
-                    // Assuming spawnText was re-added or logic exists elsewhere? 
-                    // Actually, I noted in Phase 11 Redux that `spawnText` wasn't easily available in `processMergeChain` scope 
-                    // without passing it or using global.
-                    // But if I want to localize it, I should update it if it IS there.
-                    // Wait, in my previous edit, I *removed* `spawnText` calls from `processMergeChain` because I thought it wasn't available.
-                    // I need to check if I can re-add it or if `alert` was used?
-                    // Ah, `GameGrid.tsx` has `spawnText` from `useFloatingText` (Phase 10) IF Phase 10 was kept.
-                    // But Phase 10 was REVERTED. 
-                    // So `spawnText` logic might be MISSING entirely in `GameGrid.tsx` right now unless I re-implemented it?
-                    // Let's check imports in GameGrid.tsx.
+                    showFloatingText(activeX, activeY, `x${comboCount} COMBO!`, "#ff6b81");
                 }
 
                 // Update Grid State to show this step
@@ -243,16 +510,45 @@ export const GameGrid: React.FC = () => {
         // Final State Update
         setGrid(gridState);
         setMps(calculateMps(gridState));
+        if (totalManaGained > 0) {
+            showFloatingText(targetX, targetY, `+${totalManaGained}マナ`, "#2ed573");
+        }
     };
 
     // --- Active Skills ---
 
-    const handleShuffle = () => {
-        if (!consumeMana(SHUFFLE_COST)) {
-            alert("マナが足りません！");
+    const handleUseItem = (itemId: InventoryItemId) => {
+        // Try to use the item from inventory
+        if (!useItemFromInventory(itemId)) {
+            alert('アイテムを所持していません！');
             return;
         }
 
+        // Execute the item effect (reuse existing logic from handleBuySpecialItem)
+        switch (itemId) {
+            case 'shuffle':
+                useShuffleItem();
+                break;
+            case 'bomb':
+                useBombItem();
+                break;
+            case 'barrier':
+                useBarrierItem();
+                break;
+            case 'boost':
+                useBoostItem();
+                break;
+            case 'elixir':
+                useElixirItem();
+                break;
+            case 'armageddon':
+                useArmageddonItem();
+                break;
+        }
+    };
+
+    const useShuffleItem = () => {
+        try { SoundManager.getInstance().play('shuffle'); } catch (e) { console.error(e); }
         // Gather all items
         const items: GridItem[] = [];
         grid.forEach(row => row.forEach(cell => {
@@ -275,6 +571,11 @@ export const GameGrid: React.FC = () => {
         }
 
         // Place items back randomly
+        for (let i = emptyCells.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [emptyCells[i], emptyCells[j]] = [emptyCells[j], emptyCells[i]];
+        }
+
         items.forEach((item, index) => {
             if (index < emptyCells.length) {
                 const { x, y } = emptyCells[index];
@@ -285,43 +586,180 @@ export const GameGrid: React.FC = () => {
         triggerImpact(ImpactStyle.Heavy);
         setGrid(newGrid);
         setMps(calculateMps(newGrid));
+        showFloatingText(Math.floor(GRID_WIDTH / 2), Math.floor(GRID_HEIGHT / 2), "シャッフル！", "#00b894");
+        addLog('シャッフルを使用しました。', 'info');
     };
 
-    const handleCellClick = (cell: GridCell) => {
-        if (!isPurgeMode) return;
-        if (!cell.item) return;
+    const useBombItem = () => {
+        setGrid(currentGrid => {
+            const newGrid = currentGrid.map(row => row.map(c => ({ ...c })));
+            const enemies = [];
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (newGrid[y][x].item?.type === 'enemy') {
+                        enemies.push({ x, y });
+                    }
+                }
+            }
 
-        // Allow purging enemies
-        if (cell.item.type === 'enemy' || consumeMana(PURGE_COST)) {
-            const newGrid = [...grid.map(row => [...row.map(c => ({ ...c }))])];
-            newGrid[cell.y][cell.x].item = null;
-            setGrid(newGrid);
+            if (enemies.length === 0) {
+                addLog("敵が見当たりませんでした...", "info");
+                return newGrid;
+            }
+
+            for (let i = enemies.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [enemies[i], enemies[j]] = [enemies[j], enemies[i]];
+            }
+
+            const targets = enemies.slice(0, 5);
+            targets.forEach(({ x, y }) => {
+                newGrid[y][x].item = null;
+                showFloatingText(x, y, "BOOM!", "#e17055");
+            });
+
+            triggerImpact(ImpactStyle.Heavy);
+            addLog(`マナ・ボムを使用！ ${targets.length}体の敵を吹き飛ばしました。`, "success");
+            return newGrid;
+        });
+    };
+
+    const useBarrierItem = () => {
+        setBarrierEndTime(Date.now() + 24 * 60 * 60 * 1000);
+        addLog("聖なる結界を展開しました。(24時間有効)", "success");
+    };
+
+    const useBoostItem = () => {
+        setBoostEndTime(Date.now() + 60 * 1000);
+        setMpsMultiplier(2);
+        addLog("マナブースト発動！生産量2倍！(60秒)", "success");
+    };
+
+    const useElixirItem = () => {
+        setGrid(currentGrid => {
+            const newGrid = currentGrid.map(row => row.map(c => ({ ...c })));
+            let minTier = 999;
+            const items: { x: number, y: number, tier: number }[] = [];
+
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    const item = newGrid[y][x].item;
+                    if (item && item.type === 'creature' && !newGrid[y][x].isLocked) {
+                        if (item.tier < minTier) minTier = item.tier;
+                        items.push({ x, y, tier: item.tier });
+                    }
+                }
+            }
+
+            if (items.length === 0) return newGrid;
+
+            const targets = items.filter(i => i.tier === minTier);
+            targets.forEach(({ x, y }) => {
+                const cell = newGrid[y][x];
+                if (cell.item) {
+                    cell.item.tier = Math.min(10, cell.item.tier + 1) as any;
+                    showFloatingText(x, y, "LEVEL UP!", "#a29bfe");
+                }
+            });
+
+            SoundManager.getInstance().play('merge', 1.0);
+            addLog(`進化の秘薬を使用。ランク${minTier}のマナモンたちが成長しました！`, "success");
             setMps(calculateMps(newGrid));
-            triggerImpact(ImpactStyle.Medium);
-            // setIsPurgeMode(false); // Optional: Auto-exit? Let's keep it manual toggle for multi-delete
-        } else {
-            alert("マナが足りません！");
-            setIsPurgeMode(false);
-        }
+            return newGrid;
+        });
+    };
+
+    const useArmageddonItem = () => {
+        setGrid(currentGrid => {
+            const newGrid = currentGrid.map(row => row.map(c => ({ ...c })));
+            let count = 0;
+            let manaGain = 0;
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (newGrid[y][x].item?.type === 'enemy') {
+                        newGrid[y][x].item = null;
+                        count++;
+                        manaGain += 500;
+                        showFloatingText(x, y, "+500", "#e17055");
+                    }
+                }
+            }
+            if (count > 0) {
+                triggerImpact(ImpactStyle.Heavy);
+                addMana(manaGain);
+                addLog(`ハルマゲドンを使用！全ての敵が塵となり、${manaGain.toLocaleString()}マナへと還りました。`, "success");
+            } else {
+                addLog("敵はいませんでした。平和な世界です。", "info");
+            }
+            return newGrid;
+        });
     };
 
     return (
         <>
-            {showShop && <ShopModal onClose={() => setShowShop(false)} />}
+            {showShop && <ShopModal onClose={() => setShowShop(false)} onBuyItem={(itemId) => {
+                addItemToInventory(itemId as any, 1);
+                return true;
+            }} />}
+            {showItemModal && <ItemModal onClose={() => setShowItemModal(false)} onOpenShop={() => { setShowItemModal(false); setShowShop(true); }} onUseItem={handleUseItem} />}
+
+            {/* REALM TABS - MOVED OUTSIDE GRID CONTAINER */}
+            <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '5px', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+                {(['plains', 'mine', 'sky'] as RealmId[]).map(realmId => {
+                    const isUnlocked = unlockedRealms.includes(realmId);
+                    const isActive = activeRealmId === realmId;
+                    const config = REALM_CONFIG[realmId];
+
+                    return (
+                        <button
+                            key={realmId}
+                            onClick={() => {
+                                SoundManager.getInstance().play('button');
+                                if (isUnlocked) {
+                                    setActiveRealmId(realmId);
+                                } else {
+                                    if (confirm(`${config.name}を開放しますか？\nコスト: ${config.cost.toLocaleString()}マナ\n\n${config.description}`)) {
+                                        handleUnlockRealm(realmId);
+                                    }
+                                }
+                            }}
+                            style={{
+                                flex: 1,
+                                minWidth: '80px',
+                                padding: '10px 8px', // Larger touch target
+                                borderRadius: '12px',
+                                border: isActive ? '2px solid #6c5ce7' : '1px solid rgba(0,0,0,0.1)',
+                                background: isActive ? '#6c5ce7' : (isUnlocked ? '#ffffff' : '#f1f2f6'),
+                                color: isActive ? '#fff' : (isUnlocked ? '#333' : '#a4b0be'),
+                                fontWeight: 'bold',
+                                cursor: 'pointer',
+                                opacity: isUnlocked ? 1 : 0.9,
+                                boxShadow: isActive ? '0 4px 10px rgba(108, 92, 231, 0.4)' : 'none',
+                                transition: 'all 0.2s',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            {isUnlocked ? config.name : `🔒 ${config.name}`}
+                        </button>
+                    );
+                })}
+            </div>
 
             <DndContext
                 sensors={sensors}
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
             >
-                <div className={styles.gridContainer} style={{ border: isPurgeMode ? '2px solid #ff4757' : undefined }}>
+                <div className={styles.gridContainer} style={{ position: 'relative' }}>
+                    <FloatingTextOverlay ref={floatingTextRef} />
+
                     {grid.map((row, y) => (
                         <div key={`row-${y}`} className={styles.row}>
                             {row.map((cell) => (
                                 <GridCellComponent
                                     key={`${cell.x},${cell.y}`}
+                                    id={`cell-${cell.x}-${cell.y}`} // Add ID for coordinate lookup
                                     cell={cell}
-                                    onClick={() => handleCellClick(cell)}
                                 />
                             ))}
                         </div>
@@ -330,21 +768,21 @@ export const GameGrid: React.FC = () => {
 
                 <DragOverlay>
                     {activeItem ? (
-                        <div className={`${styles.dragOverlay} ${styles[`tier-${activeItem.tier}`]}`}>
+                        <div className={`${styles.dragOverlay} ${styles[`tier-${activeItem.tier}`]} ${activeItem.type === 'enemy' ? styles.enemyItem : ''}`}>
                             {activeItem.type === 'creature' ? (
-                                activeItem.tier <= 5 ? (
+                                activeItem.tier <= 10 ? (
                                     <img
                                         src={`/assets/creatures/creature_t${activeItem.tier}.png`}
-                                        style={{ width: '85%', height: '85%', objectFit: 'contain' }}
+                                        style={{ width: '85%', height: '85%', objectFit: 'contain', borderRadius: '16px' }}
                                         alt={`Tier ${activeItem.tier}`}
                                     />
                                 ) : (
-                                    `T${activeItem.tier}`
+                                    `Lv.${activeItem.tier}`
                                 )
                             ) : (
                                 <img
                                     src={`/assets/enemies/enemy_t${activeItem.tier}.png`} // Assuming enemy assets
-                                    style={{ width: '85%', height: '85%', objectFit: 'contain' }}
+                                    style={{ width: '85%', height: '85%', objectFit: 'contain', borderRadius: '16px' }}
                                     alt={`Enemy T${activeItem.tier}`}
                                 />
                             )}
@@ -353,37 +791,40 @@ export const GameGrid: React.FC = () => {
                 </DragOverlay>
 
                 {/* CONTROLS */}
-                <div className={styles.controls} style={{ flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+                <div className={styles.controls} style={{ flexDirection: 'column', gap: '4px', alignItems: 'center', marginTop: '5px' }}>
 
-                    <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', gap: '4px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>
                         <button
                             className={styles.summonButton}
-                            style={{ flex: 1, padding: '8px', fontSize: '0.9rem', background: '#ffa502' }}
-                            onClick={() => setShowShop(true)}
+                            style={{ flex: 1, padding: '8px', fontSize: '0.85rem', background: '#ffa502' }}
+                            onClick={() => {
+                                try { SoundManager.getInstance().play('button'); } catch (e) { console.error(e); }
+                                setShowShop(true);
+                            }}
                         >
                             ショップ
                         </button>
+                        {/* Trash Bin Area */}
+                        <TrashBin activeItem={activeItem} mana={mana} cost={calculatePurgeCost(mps)} />
+
                         <button
                             className={styles.summonButton}
-                            style={{ flex: 1, padding: '8px', fontSize: '0.9rem', background: isPurgeMode ? '#ff4757' : '#70a1ff' }}
-                            onClick={() => setIsPurgeMode(!isPurgeMode)}
+                            style={{ flex: 1, padding: '8px', fontSize: '0.85rem', background: '#6c5ce7' }}
+                            onClick={() => {
+                                try { SoundManager.getInstance().play('button'); } catch (e) { console.error(e); }
+                                setShowItemModal(true);
+                            }}
                         >
-                            {isPurgeMode ? '消去中...' : '消去'}
-                        </button>
-                        <button
-                            className={styles.summonButton}
-                            style={{ flex: 1, padding: '8px', fontSize: '0.9rem', background: '#2ed573' }}
-                            onClick={handleShuffle}
-                        >
-                            混ぜる
+                            🎒 アイテム
                         </button>
                     </div>
 
                     <button
                         className={styles.summonButton}
-                        disabled={mana < 10}
+                        disabled={mana < calculateSummonCost(mana, mps)}
                         onClick={() => {
-                            const cost = 10;
+                            SoundManager.getInstance().play('button');
+                            const cost = calculateSummonCost(mana, mps);
                             // Check empty
                             let hasSpace = false;
                             for (let r of grid) if (r.some(c => !c.item && !c.isLocked)) hasSpace = true;
@@ -409,8 +850,9 @@ export const GameGrid: React.FC = () => {
                                 let tier = 1;
                                 let type: 'creature' | 'enemy' = 'creature';
 
-                                // 5% Chance for Enemy
-                                if (Math.random() < 0.05) {
+                                // Dynamic Enemy Chance based on progression
+                                const enemyRate = calculateEnemySpawnRate(mana, mps);
+                                if (Math.random() < enemyRate) {
                                     type = 'enemy';
                                     tier = 1; // Enemy doesn't really use tier logic yet
                                 } else {
@@ -436,17 +878,15 @@ export const GameGrid: React.FC = () => {
                             }
                         }}
                     >
-                        召喚 (10 マナ)
+                        召喚 ({calculateSummonCost(mana, mps).toLocaleString()} マナ)
                     </button>
                 </div>
 
-                {/* Helper Text for Purge Mode */}
-                {isPurgeMode && (
-                    <div style={{ position: 'fixed', bottom: '80px', left: '0', width: '100%', textAlign: 'center', color: '#ff4757', fontWeight: 'bold', textShadow: '0 0 5px black', pointerEvents: 'none' }}>
-                        アイテムをタップして消去 ({PURGE_COST} マナ)
-                    </div>
-                )}
+                {/* Helper Text for Purge Mode - REMOVED */}
             </DndContext>
+
+            {/* Game Log Area */}
+            <GameLog logs={logs} />
         </>
     );
 };

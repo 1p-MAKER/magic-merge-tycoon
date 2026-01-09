@@ -1,4 +1,4 @@
-import { generateId, type GridCell, type GridItem, type GridState } from './types'; // Removed erroneous type-only syntax here as I will use replace_file_content properly below... wait, I should just replace the whole file content to be safe or use huge chunks. 
+import { generateId, type GridCell, type GridItem, type GridState } from './types';
 
 // Actually, I'll use specific chunks to fix the imports and the unused vars.
 
@@ -151,12 +151,69 @@ export const moveItemInGrid = (
     const newGrid = cloneGrid(grid);
     const item = newGrid[fromY][fromX].item;
 
-    // Swap or Move
-    // If target has item, swap. If empty, move.
+    // Only allow moves to empty cells - no swapping
     const targetItem = newGrid[toY][toX].item;
 
-    newGrid[fromY][fromX].item = targetItem;
+    if (targetItem) {
+        // Target cell is occupied - return grid unchanged
+        return grid;
+    }
+
+    // Move item to empty cell
+    newGrid[fromY][fromX].item = null;
     newGrid[toY][toX].item = item;
 
     return newGrid;
+};
+
+// ------------------------------------------------------------------
+// Attack Range Calculation
+// ------------------------------------------------------------------
+export const getAttackRange = (
+    centerX: number,
+    centerY: number,
+    tier: number,
+    gridWidth: number,
+    gridHeight: number
+): { x: number, y: number }[] => {
+    const range: { x: number, y: number }[] = [];
+
+    const addTarget = (x: number, y: number) => {
+        if (x >= 0 && x < gridWidth && y >= 0 && y < gridHeight && (x !== centerX || y !== centerY)) {
+            range.push({ x, y });
+        }
+    };
+
+    if (tier <= 2) {
+        // 十字1マス
+        [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([dx, dy]) => addTarget(centerX + dx, centerY + dy));
+    } else if (tier <= 4) {
+        // 周囲 3x3
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                addTarget(centerX + dx, centerY + dy);
+            }
+        }
+    } else if (tier <= 6) {
+        // 十字 2マス
+        for (let i = 1; i <= 2; i++) {
+            [[0, i], [0, -i], [i, 0], [-i, 0]].forEach(([dx, dy]) => addTarget(centerX + dx, centerY + dy));
+        }
+    } else if (tier <= 8) {
+        // 周囲 5x5
+        for (let dy = -2; dy <= 2; dy++) {
+            for (let dx = -2; dx <= 2; dx++) {
+                addTarget(centerX + dx, centerY + dy);
+            }
+        }
+    } else {
+        // 周囲 7x7 (Tier 9, 10)
+        for (let dy = -3; dy <= 3; dy++) {
+            for (let dx = -3; dx <= 3; dx++) {
+                addTarget(centerX + dx, centerY + dy);
+            }
+        }
+    }
+
+    return range;
 };

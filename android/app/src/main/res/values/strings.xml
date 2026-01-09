@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Magic Merge Tycoon</string>
-    <string name="title_activity_main">Magic Merge Tycoon</string>
+    <string name="app_name">マナモンマージ</string>
+    <string name="title_activity_main">マナモンマージ</string>
     <string name="package_name">com.magicmerge.tycoon</string>
     <string name="custom_url_scheme">com.magicmerge.tycoon</string>
 </resources>

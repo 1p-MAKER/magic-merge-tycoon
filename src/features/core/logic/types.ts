@@ -1,5 +1,12 @@
 export type ItemTier = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type ItemType = 'creature' | 'plant' | 'rock' | 'chest' | 'enemy';
+export type RealmId = 'plains' | 'mine' | 'sky';
+
+export interface RealmState {
+  id: RealmId;
+  isUnlocked: boolean;
+  grid: GridCell[][];
+}
 
 export interface GridItem {
   id: string; // Unique identifier for React keys and logic
@@ -22,3 +29,8 @@ export const GRID_HEIGHT = 5; // Example size
 
 // Helper to create a unique ID
 export const generateId = (): string => Math.random().toString(36).substr(2, 9);
+
+export interface SpecialState {
+  boostEndTime: number; // Timestamp
+  barrierEndTime: number; // Timestamp
+}

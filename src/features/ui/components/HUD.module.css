@@ -12,13 +12,11 @@
     padding-right: max(2rem, env(safe-area-inset-right));
     /* Extra right padding for curve */
 
-    background: var(--color-glass-bg);
-    border: 1px solid var(--color-glass-border);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: #ffffff;
+    border: 1px solid #eeeeee;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    color: var(--color-text-primary);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    color: #333333;
     box-sizing: border-box;
     /* Critical for padding not to exceed width */
 
@@ -26,6 +24,30 @@
     position: sticky;
     top: calc(env(safe-area-inset-top) + 10px);
     z-index: 100;
+}
+
+.statsGroup {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.settingsButton {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    margin-right: -0.5rem;
+    /* cancel padding visually */
+}
+
+.settingsButton:hover {
+    opacity: 1;
 }
 
 .stat {

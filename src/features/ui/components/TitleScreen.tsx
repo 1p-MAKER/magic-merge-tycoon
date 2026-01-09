@@ -12,10 +12,20 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({ onStart }) => {
     const [earnedMana, setEarnedMana] = useState<number>(0);
 
     useEffect(() => {
-        const { offlineEarnings, grid } = loadGame();
-        if (grid && offlineEarnings > 0) {
-            const currentMps = calculateMps(grid);
-            const earned = Math.floor(currentMps * offlineEarnings);
+        const loaded = loadGame();
+        if (loaded && loaded.offlineEarnings > 0) {
+            const { realms, unlockedRealms, offlineEarnings } = loaded;
+            const currentUnlocked = unlockedRealms || ['plains'];
+            let totalMps = 0;
+
+            // Calculate total MPS from all unlocked realms
+            currentUnlocked.forEach(id => {
+                if (realms && realms[id]) {
+                    totalMps += calculateMps(realms[id]);
+                }
+            });
+
+            const earned = Math.floor(totalMps * offlineEarnings);
             setEarnedMana(earned);
         }
     }, [loadGame]);

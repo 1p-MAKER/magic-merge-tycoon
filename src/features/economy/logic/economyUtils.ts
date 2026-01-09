@@ -5,8 +5,8 @@ export const calculateMps = (grid: GridState): number => {
     for (const row of grid) {
         for (const cell of row) {
             if (cell.item) {
-                // Base: 10, Multiplier: 2^(Tier-1) -> 10, 20, 40, 80...
-                const itemMps = 10 * Math.pow(2, cell.item.tier - 1);
+                // Base: 10, Multiplier: 1.6^(Tier-1) for balanced progression
+                const itemMps = 10 * Math.pow(1.6, cell.item.tier - 1);
                 totalMps += itemMps;
             }
         }
