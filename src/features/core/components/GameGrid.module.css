@@ -1,9 +1,9 @@
 .gridContainer {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 2px;
     /* Slightly tighter gap */
-    padding: 12px;
+    padding: 4px;
     /* Reduced padding */
     background: var(--grid-bg);
     backdrop-filter: blur(8px);

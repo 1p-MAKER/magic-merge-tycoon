@@ -10,7 +10,7 @@ export const HUD: React.FC = () => {
 
     return (
         <>
-            <div className={styles.container}>
+            <div className={styles.container} style={{ marginBottom: '0px', padding: '4px 1rem', top: 'env(safe-area-inset-top)', borderBottom: 'none' }}>
                 <div className={styles.statsGroup}>
                     <div className={styles.stat}>
                         <span className={styles.label}>マナ</span>

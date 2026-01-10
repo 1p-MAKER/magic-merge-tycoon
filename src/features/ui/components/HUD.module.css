@@ -6,8 +6,8 @@
     max-width: 500px;
     margin: 0 auto;
     /* Use max() to ensure at least 1rem padding, or more if safe area is large */
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+    padding-top: 4px;
+    padding-bottom: 4px;
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(2rem, env(safe-area-inset-right));
     /* Extra right padding for curve */
@@ -22,7 +22,7 @@
 
     /* Sticky top to ensure visibility but respect safe area */
     position: sticky;
-    top: calc(env(safe-area-inset-top) + 10px);
+    top: env(safe-area-inset-top);
     z-index: 100;
 }
 

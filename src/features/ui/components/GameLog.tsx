@@ -26,8 +26,8 @@ export const GameLog: React.FC<GameLogProps> = ({ logs }) => {
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
             border: '1px solid #ddd',
             borderRadius: '8px',
-            marginTop: '0px', // Tighten up
-            padding: '10px',
+            marginTop: '4px',
+            padding: '4px',
             overflowY: 'auto',
             fontSize: '0.8rem',
             boxShadow: '0 2px 5px rgba(0,0,0,0.05)',

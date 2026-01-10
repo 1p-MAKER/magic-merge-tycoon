@@ -713,7 +713,7 @@ export const GameGrid: React.FC = () => {
             {showItemModal && <ItemModal onClose={() => setShowItemModal(false)} onOpenShop={() => { setShowItemModal(false); setShowShop(true); }} onUseItem={handleUseItem} />}
 
             {/* REALM TABS - MOVED OUTSIDE GRID CONTAINER */}
-            <div style={{ display: 'flex', gap: '5px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '5px', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ display: 'flex', gap: '5px', marginTop: '0px', marginBottom: '0px', overflowX: 'auto', padding: '2px 0', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
                 {(['plains', 'mine', 'sky'] as RealmId[]).map(realmId => {
                     const isUnlocked = unlockedRealms.includes(realmId);
                     const isActive = activeRealmId === realmId;
@@ -736,7 +736,7 @@ export const GameGrid: React.FC = () => {
                             style={{
                                 flex: 1,
                                 minWidth: '80px',
-                                padding: '10px 8px',
+                                padding: '8px 4px',
                                 borderRadius: '12px',
                                 border: isActive ? '2px solid #6c5ce7' : (canUnlock ? '2px solid #2ed573' : '1px solid rgba(0,0,0,0.1)'),
                                 background: isActive ? '#6c5ce7' : (isUnlocked ? '#ffffff' : (canUnlock ? 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)' : '#f1f2f6')),
@@ -795,7 +795,7 @@ export const GameGrid: React.FC = () => {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
             >
-                <div className={styles.gridContainer} style={{ position: 'relative' }}>
+                <div className={styles.gridContainer} style={{ position: 'relative', padding: '0px', gap: '0px', width: 'fit-content' }}>
                     <FloatingTextOverlay ref={floatingTextRef} />
 
                     {grid.map((row, y) => (
@@ -847,7 +847,7 @@ export const GameGrid: React.FC = () => {
                 </DragOverlay>
 
                 {/* CONTROLS */}
-                <div className={styles.controls} style={{ flexDirection: 'column', gap: '4px', alignItems: 'center', marginTop: '5px' }}>
+                <div className={styles.controls} style={{ flexDirection: 'column', gap: '0px', alignItems: 'center', marginTop: '0px' }}>
 
                     <div style={{ display: 'flex', gap: '4px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>
                         <button
