@@ -110,6 +110,7 @@ export const executeMerge = (
             id: generateId(),
             tier: nextTier,
             type: sampleItem.type,
+            realmOrigin: sampleItem.realmOrigin, // Preserve realm origin
         };
         createdItems.push(newItem);
 
