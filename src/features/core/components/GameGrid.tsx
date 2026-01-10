@@ -817,7 +817,18 @@ export const GameGrid: React.FC = () => {
                             {activeItem.type === 'creature' ? (
                                 activeItem.tier <= 10 ? (
                                     <img
-                                        src={`/assets/creatures/creature_t${activeItem.tier}.png`}
+                                        src={(() => {
+                                            const realm = activeItem.realmOrigin;
+                                            const tier = activeItem.tier;
+                                            let basePath = '/assets/creatures';
+
+                                            if (realm === 'mine' && tier <= 5) {
+                                                basePath = '/assets/creatures/mine';
+                                            } else if (realm === 'sky' && tier <= 3) {
+                                                basePath = '/assets/creatures/sky';
+                                            }
+                                            return `${basePath}/creature_t${tier}.png`;
+                                        })()}
                                         style={{ width: '85%', height: '85%', objectFit: 'contain', borderRadius: '16px' }}
                                         alt={`Tier ${activeItem.tier}`}
                                     />
@@ -826,7 +837,7 @@ export const GameGrid: React.FC = () => {
                                 )
                             ) : (
                                 <img
-                                    src={`/assets/enemies/enemy_t${activeItem.tier}.png`} // Assuming enemy assets
+                                    src={`/assets/enemies/enemy_${activeItem.enemyVariant || 'shadow_slime'}.png`}
                                     style={{ width: '85%', height: '85%', objectFit: 'contain', borderRadius: '16px' }}
                                     alt={`Enemy T${activeItem.tier}`}
                                 />
