@@ -122,3 +122,18 @@ img {
   -webkit-user-drag: none;
   /* Disable drag ghost */
 }
+
+/* Realm Unlock Pulse Animation */
+@keyframes pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(46, 213, 115, 0.6);
+  }
+
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 0 20px rgba(46, 213, 115, 0.9);
+  }
+}

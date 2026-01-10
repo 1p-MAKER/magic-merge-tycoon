@@ -709,6 +709,7 @@ export const GameGrid: React.FC = () => {
                     const isUnlocked = unlockedRealms.includes(realmId);
                     const isActive = activeRealmId === realmId;
                     const config = REALM_CONFIG[realmId];
+                    const canUnlock = !isUnlocked && mana >= config.cost;
 
                     return (
                         <button
@@ -726,20 +727,38 @@ export const GameGrid: React.FC = () => {
                             style={{
                                 flex: 1,
                                 minWidth: '80px',
-                                padding: '10px 8px', // Larger touch target
+                                padding: '10px 8px',
                                 borderRadius: '12px',
-                                border: isActive ? '2px solid #6c5ce7' : '1px solid rgba(0,0,0,0.1)',
-                                background: isActive ? '#6c5ce7' : (isUnlocked ? '#ffffff' : '#f1f2f6'),
-                                color: isActive ? '#fff' : (isUnlocked ? '#333' : '#a4b0be'),
+                                border: isActive ? '2px solid #6c5ce7' : (canUnlock ? '2px solid #2ed573' : '1px solid rgba(0,0,0,0.1)'),
+                                background: isActive ? '#6c5ce7' : (isUnlocked ? '#ffffff' : (canUnlock ? 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)' : '#f1f2f6')),
+                                color: isActive ? '#fff' : (isUnlocked ? '#333' : (canUnlock ? '#1e3c1f' : '#a4b0be')),
                                 fontWeight: 'bold',
                                 cursor: 'pointer',
-                                opacity: isUnlocked ? 1 : 0.9,
-                                boxShadow: isActive ? '0 4px 10px rgba(108, 92, 231, 0.4)' : 'none',
+                                opacity: isUnlocked ? 1 : (canUnlock ? 1 : 0.7),
+                                boxShadow: isActive ? '0 4px 10px rgba(108, 92, 231, 0.4)' : (canUnlock ? '0 0 12px rgba(46, 213, 115, 0.6)' : 'none'),
                                 transition: 'all 0.2s',
-                                fontSize: '0.9rem'
+                                fontSize: '0.9rem',
+                                animation: canUnlock ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                                position: 'relative' as const
                             }}
                         >
-                            {isUnlocked ? config.name : `🔒 ${config.name}`}
+                            {isUnlocked ? config.name : (canUnlock ? `✨ ${config.name}` : `🔒 ${config.name}`)}
+                            {canUnlock && (
+                                <span style={{
+                                    position: 'absolute',
+                                    top: '-8px',
+                                    right: '-5px',
+                                    background: '#e17055',
+                                    color: '#fff',
+                                    fontSize: '0.6rem',
+                                    padding: '2px 5px',
+                                    borderRadius: '8px',
+                                    fontWeight: 'bold',
+                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                                }}>
+                                    OPEN!
+                                </span>
+                            )}
                         </button>
                     );
                 })}
