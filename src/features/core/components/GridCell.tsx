@@ -69,7 +69,7 @@ export const GridCell: React.FC<GridCellProps> = ({ cell, id, onClick }) => {
                         const tier = cell.item.tier;
                         let basePath = '/assets/creatures';
 
-                        if (realm === 'mine' && tier <= 3) {
+                        if (realm === 'mine' && tier <= 5) {
                             basePath = '/assets/creatures/mine';
                         } else if (realm === 'sky' && tier <= 3) {
                             basePath = '/assets/creatures/sky';
