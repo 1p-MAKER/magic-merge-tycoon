@@ -98,12 +98,17 @@ export const calculateEnemySpawnRate = (currentMana: number, currentMps: number,
     const mpsBonus = Math.floor(currentMps / 100) * 0.01;
     let rate = 0.05 + manaBonus + mpsBonus;
 
-    // Mine realm has 2x enemy spawn rate (高リスク高リターン)
+    // Mine realm: 3x rate (Very High Risk)
     if (realmId === 'mine') {
-        rate *= 2;
+        rate *= 3.0;
+    }
+    // Sky realm: 2.5x rate (High Risk)
+    else if (realmId === 'sky') {
+        rate *= 2.5;
     }
 
-    return Math.min(0.5, rate);
+    // Cap at 80% (was 50%)
+    return Math.min(0.8, rate);
 };
 
 export const calculatePurgeCost = (currentMps: number): number => {
