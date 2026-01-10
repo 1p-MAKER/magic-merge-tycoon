@@ -216,13 +216,22 @@ export const GameGrid: React.FC = () => {
         return () => clearTimeout(timer);
     }, [realms, unlockedRealms, mana, upgrades, offlineStats, boostEndTime, barrierEndTime, inventory, saveGame]);
 
+    // Get Sky realm time-based multiplier
+    const getSkyTimeMultiplier = (): number => {
+        const hour = new Date().getHours();
+        if (hour >= 6 && hour < 12) return 1.2;      // 朝: 1.2倍
+        if (hour >= 12 && hour < 18) return 1.0;     // 昼: 1.0倍
+        if (hour >= 18 && hour < 22) return 1.5;     // 夕方: 1.5倍（ゴールデンタイム）
+        return 0.8;                                   // 夜: 0.8倍
+    };
+
     // Global MPS Calculation (Sum of all unlocked realms)
     useEffect(() => {
         let totalMps = 0;
         unlockedRealms.forEach(id => {
             let multiplier = 1;
             if (id === 'mine') multiplier = 1.5;
-            // Sky realm special logic can go here later
+            if (id === 'sky') multiplier = getSkyTimeMultiplier();
 
             totalMps += calculateMps(realms[id]) * multiplier;
         });
@@ -759,6 +768,23 @@ export const GameGrid: React.FC = () => {
                                     OPEN!
                                 </span>
                             )}
+                            {/* Sky realm time bonus indicator */}
+                            {realmId === 'sky' && isUnlocked && (
+                                <span style={{
+                                    position: 'absolute',
+                                    bottom: '-6px',
+                                    right: '-5px',
+                                    background: getSkyTimeMultiplier() >= 1.5 ? '#ffd700' : (getSkyTimeMultiplier() >= 1.0 ? '#74b9ff' : '#636e72'),
+                                    color: getSkyTimeMultiplier() >= 1.5 ? '#333' : '#fff',
+                                    fontSize: '0.55rem',
+                                    padding: '2px 4px',
+                                    borderRadius: '6px',
+                                    fontWeight: 'bold',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                }}>
+                                    ×{getSkyTimeMultiplier().toFixed(1)}
+                                </span>
+                            )}
                         </button>
                     );
                 })}
@@ -870,7 +896,7 @@ export const GameGrid: React.FC = () => {
                                 let type: 'creature' | 'enemy' = 'creature';
 
                                 // Dynamic Enemy Chance based on progression
-                                const enemyRate = calculateEnemySpawnRate(mana, mps);
+                                const enemyRate = calculateEnemySpawnRate(mana, mps, activeRealmId);
                                 if (Math.random() < enemyRate) {
                                     type = 'enemy';
                                     tier = 1; // Enemy doesn't really use tier logic yet
@@ -898,6 +924,7 @@ export const GameGrid: React.FC = () => {
                                     id: generateId(),
                                     tier: tier as any,
                                     type: type,
+                                    realmOrigin: activeRealmId,
                                     ...(type === 'enemy' && { enemyVariant: getEnemyVariant() })
                                 };
                                 setGrid(newGrid);

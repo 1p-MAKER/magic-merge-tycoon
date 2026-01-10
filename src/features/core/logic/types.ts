@@ -15,6 +15,7 @@ export interface GridItem {
   type: ItemType;
   isLocked?: boolean; // For initial obstacles
   enemyVariant?: EnemyVariant; // Enemy type for realm-specific enemies
+  realmOrigin?: RealmId; // Which realm this creature was spawned in
 }
 
 export interface GridCell {

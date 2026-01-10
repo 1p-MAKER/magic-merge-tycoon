@@ -91,12 +91,19 @@ export const calculateSummonCost = (currentMana: number, currentMps: number): nu
     return Math.max(10, manaCost, mpsCost);
 };
 
-export const calculateEnemySpawnRate = (currentMana: number, currentMps: number): number => {
+export const calculateEnemySpawnRate = (currentMana: number, currentMps: number, realmId?: string): number => {
     // Base 5%, increases with progression
     // +1% per 100k mana, +1% per 100 MPS, capped at 50%
     const manaBonus = Math.floor(currentMana / 100000) * 0.01;
     const mpsBonus = Math.floor(currentMps / 100) * 0.01;
-    return Math.min(0.5, 0.05 + manaBonus + mpsBonus);
+    let rate = 0.05 + manaBonus + mpsBonus;
+
+    // Mine realm has 2x enemy spawn rate (高リスク高リターン)
+    if (realmId === 'mine') {
+        rate *= 2;
+    }
+
+    return Math.min(0.5, rate);
 };
 
 export const calculatePurgeCost = (currentMps: number): number => {

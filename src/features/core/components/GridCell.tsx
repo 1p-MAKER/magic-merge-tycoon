@@ -63,14 +63,27 @@ export const GridCell: React.FC<GridCellProps> = ({ cell, id, onClick }) => {
                                 alt={variant}
                             />
                         );
-                    })() : cell.item.tier <= 10 ? (
-                        <img
-                            src={`/assets/creatures/creature_t${cell.item.tier}.png`}
-                            className={styles.itemImage}
-                            style={{ borderRadius: '16px' }}
-                            alt={`Creature T${cell.item.tier}`}
-                        />
-                    ) : (
+                    })() : cell.item.tier <= 10 ? (() => {
+                        // Determine creature path based on realm origin
+                        const realm = cell.item.realmOrigin;
+                        const tier = cell.item.tier;
+                        let basePath = '/assets/creatures';
+
+                        if (realm === 'mine' && tier <= 3) {
+                            basePath = '/assets/creatures/mine';
+                        } else if (realm === 'sky' && tier <= 3) {
+                            basePath = '/assets/creatures/sky';
+                        }
+
+                        return (
+                            <img
+                                src={`${basePath}/creature_t${tier}.png`}
+                                className={styles.itemImage}
+                                style={{ borderRadius: '16px' }}
+                                alt={`Creature T${tier}`}
+                            />
+                        );
+                    })() : (
                         <div className={styles.placeholder}>
                             Lv.{cell.item.tier}
                         </div>
