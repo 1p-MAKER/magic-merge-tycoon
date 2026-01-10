@@ -28,7 +28,7 @@ export const processEnemyActions = (
                             }
                         }
                         // Spread logic
-                        if (!hasSpread && Math.random() < 0.05) {
+                        if (!hasSpread && Math.random() < 0.10) { // Increased to 10%
                             const directions = [
                                 { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
                                 { dx: -1, dy: 0 }, { dx: 1, dy: 0 }
@@ -56,7 +56,7 @@ export const processEnemyActions = (
 
                     case 'rock_golem':
                         // Rock Golem: Locks adjacent cells (no spread, no steal)
-                        if (Math.random() < 0.08) {
+                        if (Math.random() < 0.15) { // Increased to 15%
                             const directions = [
                                 { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
                                 { dx: -1, dy: 0 }, { dx: 1, dy: 0 }
@@ -79,7 +79,7 @@ export const processEnemyActions = (
 
                     case 'phantom':
                         // Phantom: High mana steal + Random warp
-                        if (Math.random() < 0.15) {
+                        if (Math.random() < 0.20) { // Steal chance increased to 20%
                             const stealAmount = enemy.tier * 25; // Higher steal
                             if (currentMana >= stealAmount) {
                                 manaLost += stealAmount;
@@ -87,7 +87,7 @@ export const processEnemyActions = (
                             }
                         }
                         // Random warp
-                        if (Math.random() < 0.1) {
+                        if (Math.random() < 0.20) { // Warp chance increased to 20%
                             const emptyCells: { x: number, y: number }[] = [];
                             for (let ey = 0; ey < GRID_HEIGHT; ey++) {
                                 for (let ex = 0; ex < GRID_WIDTH; ex++) {
