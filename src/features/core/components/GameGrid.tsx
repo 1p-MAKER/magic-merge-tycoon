@@ -885,10 +885,20 @@ export const GameGrid: React.FC = () => {
                                     }
                                 }
 
+                                // Determine enemy variant based on realm
+                                const getEnemyVariant = () => {
+                                    switch (activeRealmId) {
+                                        case 'mine': return 'rock_golem' as const;
+                                        case 'sky': return 'phantom' as const;
+                                        default: return 'shadow_slime' as const;
+                                    }
+                                };
+
                                 newGrid[target.y][target.x].item = {
                                     id: generateId(),
                                     tier: tier as any,
-                                    type: type
+                                    type: type,
+                                    ...(type === 'enemy' && { enemyVariant: getEnemyVariant() })
                                 };
                                 setGrid(newGrid);
                                 setMps(calculateMps(newGrid));

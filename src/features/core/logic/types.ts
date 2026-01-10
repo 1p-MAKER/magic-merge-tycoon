@@ -1,6 +1,7 @@
 export type ItemTier = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 export type ItemType = 'creature' | 'plant' | 'rock' | 'chest' | 'enemy';
 export type RealmId = 'plains' | 'mine' | 'sky';
+export type EnemyVariant = 'shadow_slime' | 'rock_golem' | 'phantom';
 
 export interface RealmState {
   id: RealmId;
@@ -13,6 +14,7 @@ export interface GridItem {
   tier: ItemTier;
   type: ItemType;
   isLocked?: boolean; // For initial obstacles
+  enemyVariant?: EnemyVariant; // Enemy type for realm-specific enemies
 }
 
 export interface GridCell {

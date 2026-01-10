@@ -52,14 +52,18 @@ export const GridCell: React.FC<GridCellProps> = ({ cell, id, onClick }) => {
                         if (onClick) onClick();
                     }}
                 >
-                    {cell.item.type === 'enemy' ? (
-                        <img
-                            src={`/assets/enemies/enemy_shadow_slime.png`}
-                            className={styles.itemImage}
-                            style={{ borderRadius: '16px' }}
-                            alt="Shadow Slime"
-                        />
-                    ) : cell.item.tier <= 10 ? (
+                    {cell.item.type === 'enemy' ? (() => {
+                        const variant = cell.item.enemyVariant || 'shadow_slime';
+                        const imagePath = `/assets/enemies/enemy_${variant}.png`;
+                        return (
+                            <img
+                                src={imagePath}
+                                className={styles.itemImage}
+                                style={{ borderRadius: '16px' }}
+                                alt={variant}
+                            />
+                        );
+                    })() : cell.item.tier <= 10 ? (
                         <img
                             src={`/assets/creatures/creature_t${cell.item.tier}.png`}
                             className={styles.itemImage}
