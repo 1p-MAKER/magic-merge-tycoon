@@ -2,18 +2,17 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    /* Slightly tighter gap */
-    padding: 4px;
-    /* Reduced padding */
+    padding: 2px;
     background: var(--grid-bg);
     backdrop-filter: blur(8px);
     border: 1px solid var(--color-glass-border);
     border-radius: 16px;
     touch-action: none;
     box-shadow: var(--shadow-glass);
-    margin: 0 auto;
-    /* Center it */
-    max-width: 100%;
+    margin: 0;
+    /* Reset margin */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .row {

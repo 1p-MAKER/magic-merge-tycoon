@@ -10,21 +10,22 @@ export const HUD: React.FC = () => {
 
     return (
         <>
-            <div className={styles.container} style={{ marginBottom: '0px', padding: '4px 1rem', top: 'env(safe-area-inset-top)', borderBottom: 'none' }}>
-                <div className={styles.statsGroup}>
+            <div className={styles.container}>
+                <div className={styles.statsGroup} style={{ gap: '2rem' }}>
                     <div className={styles.stat}>
-                        <span className={styles.label}>マナ</span>
-                        <span className={styles.value}>{Math.floor(mana).toLocaleString()}</span>
+                        <span className={styles.label} style={{ fontSize: '0.7rem' }}>マナ</span>
+                        <span className={styles.value} style={{ fontSize: '1.2rem' }}>{Math.floor(mana).toLocaleString()}</span>
                     </div>
 
                     <div className={styles.stat}>
-                        <span className={styles.label}>マナスピード</span>
-                        <span className={styles.mps}>{mps.toLocaleString(undefined, { maximumFractionDigits: 1 })}/s</span>
+                        <span className={styles.label} style={{ fontSize: '0.7rem' }}>マナスピード</span>
+                        <span className={styles.mps} style={{ fontSize: '0.9rem' }}>{mps.toLocaleString(undefined, { maximumFractionDigits: 1 })}/s</span>
                     </div>
                 </div>
 
                 <button
                     className={styles.settingsButton}
+                    style={{ padding: '0 8px' }}
                     onClick={() => {
                         SoundManager.getInstance().play('button');
                         setIsSettingsOpen(true);

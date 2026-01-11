@@ -21,12 +21,17 @@ export const GameLog: React.FC<GameLogProps> = ({ logs }) => {
     return (
         <div style={{
             width: '100%',
-            maxWidth: '400px', // Match grid width roughly
+            maxWidth: '100%',
             height: '150px',
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
             border: '1px solid #ddd',
             borderRadius: '8px',
-            marginTop: '4px',
+            maxWidth: '100%',
+            height: '150px',
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            border: '1px solid #ddd',
+            borderRadius: '8px',
+            marginTop: '0',
             padding: '4px',
             overflowY: 'auto',
             fontSize: '0.8rem',

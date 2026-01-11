@@ -3,12 +3,11 @@
   max-width: 600px;
   /* Tablet limit */
   margin: 0 auto;
-  padding: env(safe-area-inset-top) 0.5rem 0.5rem 0.5rem;
-  /* Safe area top, smaller side padding */
+  padding: env(safe-area-inset-top) 0 0 0;
+  /* Safe area top only, no side/bottom padding on root to let container handle it */
   text-align: center;
   display: flex;
   justify-content: flex-start;
-  /* Top align to avoid centering vertically weirdly */
   flex-direction: column;
   align-items: center;
   min-height: 100vh;
@@ -16,13 +15,28 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  background: var(--color-bg-gradient);
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0px;
+  width: 100%;
+  max-width: 500px;
+  /* Match design width */
+  gap: 2px;
+  /* Ultra-tight spacing */
+  padding: 0 4px;
+  /* Minimal side padding */
+  box-sizing: border-box;
+}
+
+/* Global reset for standardized spacing */
+.app-container>* {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  width: 100%;
 }
 
 h1 {

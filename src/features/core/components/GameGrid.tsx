@@ -795,11 +795,11 @@ export const GameGrid: React.FC = () => {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
             >
-                <div className={styles.gridContainer} style={{ position: 'relative', padding: '0px', gap: '0px', width: 'fit-content' }}>
+                <div className={styles.gridContainer} style={{ position: 'relative', padding: '2px', gap: '0', border: 'none', background: 'transparent', boxShadow: 'none' }}>
                     <FloatingTextOverlay ref={floatingTextRef} />
 
                     {grid.map((row, y) => (
-                        <div key={`row-${y}`} className={styles.row}>
+                        <div key={`row-${y}`} className={styles.row} style={{ margin: '0', gap: '2px' }}>
                             {row.map((cell) => (
                                 <GridCellComponent
                                     key={`${cell.x},${cell.y}`}
@@ -847,7 +847,7 @@ export const GameGrid: React.FC = () => {
                 </DragOverlay>
 
                 {/* CONTROLS */}
-                <div className={styles.controls} style={{ flexDirection: 'column', gap: '0px', alignItems: 'center', marginTop: '0px' }}>
+                <div className={styles.controls} style={{ flexDirection: 'column', gap: '0', alignItems: 'center', marginTop: '0', paddingTop: '0' }}>
 
                     <div style={{ display: 'flex', gap: '4px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>
                         <button

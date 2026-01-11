@@ -6,23 +6,15 @@
     max-width: 500px;
     margin: 0 auto;
     /* Use max() to ensure at least 1rem padding, or more if safe area is large */
-    padding-top: 4px;
-    padding-bottom: 4px;
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(2rem, env(safe-area-inset-right));
-    /* Extra right padding for curve */
-
+    padding: 4px 12px;
     background: #ffffff;
     border: 1px solid #eeeeee;
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     color: #333333;
     box-sizing: border-box;
-    /* Critical for padding not to exceed width */
-
-    /* Sticky top to ensure visibility but respect safe area */
-    position: sticky;
-    top: env(safe-area-inset-top);
+    /* Removed sticky to rely on flex layout flow for now, or add back if needed but with 0 top */
+    position: relative;
     z-index: 100;
 }
 
