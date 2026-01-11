@@ -713,7 +713,7 @@ export const GameGrid: React.FC = () => {
             {showItemModal && <ItemModal onClose={() => setShowItemModal(false)} onOpenShop={() => { setShowItemModal(false); setShowShop(true); }} onUseItem={handleUseItem} />}
 
             {/* REALM TABS - MOVED OUTSIDE GRID CONTAINER */}
-            <div style={{ display: 'flex', gap: '5px', marginTop: '0px', marginBottom: '0px', overflowX: 'auto', padding: '2px 0', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ display: 'flex', gap: '5px', overflowX: 'auto', padding: '2px 0', maxWidth: '100%', WebkitOverflowScrolling: 'touch' }}>
                 {(['plains', 'mine', 'sky'] as RealmId[]).map(realmId => {
                     const isUnlocked = unlockedRealms.includes(realmId);
                     const isActive = activeRealmId === realmId;
@@ -795,15 +795,15 @@ export const GameGrid: React.FC = () => {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
             >
-                <div className={styles.gridContainer} style={{ position: 'relative', padding: '2px', gap: '0', border: 'none', background: 'transparent', boxShadow: 'none' }}>
+                <div className={styles.gridContainer}>
                     <FloatingTextOverlay ref={floatingTextRef} />
 
                     {grid.map((row, y) => (
-                        <div key={`row-${y}`} className={styles.row} style={{ margin: '0', gap: '2px' }}>
+                        <div key={`row-${y}`} className={styles.row}>
                             {row.map((cell) => (
                                 <GridCellComponent
                                     key={`${cell.x},${cell.y}`}
-                                    id={`cell-${cell.x}-${cell.y}`} // Add ID for coordinate lookup
+                                    id={`cell-${cell.x}-${cell.y}`}
                                     cell={cell}
                                 />
                             ))}
@@ -847,7 +847,7 @@ export const GameGrid: React.FC = () => {
                 </DragOverlay>
 
                 {/* CONTROLS */}
-                <div className={styles.controls} style={{ flexDirection: 'column', gap: '0', alignItems: 'center', marginTop: '0', paddingTop: '0' }}>
+                <div className={styles.controls}>
 
                     <div style={{ display: 'flex', gap: '4px', width: '100%', maxWidth: '300px', justifyContent: 'center' }}>
                         <button

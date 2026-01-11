@@ -8,14 +8,15 @@ import { HUD } from './features/ui/components/HUD'
 
 function App() {
   return (
-    <div className="app-container" style={{ gap: '0', padding: '0', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+    <div className="app-container">
       <ThemeProvider>
-        {/* Compact Title with Safe Area padding */}
-
-
         <EconomyProvider>
+          {/* 1. HEADER AREA */}
           <HUD />
+
+          {/* 2. MAIN GAME AREA */}
           <GameGrid />
+
         </EconomyProvider>
       </ThemeProvider>
     </div>
