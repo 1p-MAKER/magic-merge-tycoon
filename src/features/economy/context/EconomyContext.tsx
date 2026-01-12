@@ -36,6 +36,8 @@ interface EconomyContextType {
     useItemFromInventory: (itemId: InventoryItemId) => boolean;
     offlineStats: OfflineStats;
     upgradeOfflineStats: (type: 'efficiency' | 'time') => void;
+    enemiesDefeated: number;
+    incrementEnemiesDefeated: (count: number) => void;
 }
 
 const EconomyContext = createContext<EconomyContextType | undefined>(undefined);
@@ -59,6 +61,8 @@ export const EconomyProvider: React.FC<{ children: ReactNode }> = ({ children })
         efficiency: 0.25, // Start at 25% efficiency
         maxTime: 7200,    // Start at 2 hours
     });
+    const [enemiesDefeated, setEnemiesDefeated] = useState(0);
+
 
     // Passive Mana Generation
     useEffect(() => {
@@ -114,6 +118,11 @@ export const EconomyProvider: React.FC<{ children: ReactNode }> = ({ children })
         });
     };
 
+    const incrementEnemiesDefeated = (count: number = 1) => {
+        setEnemiesDefeated(prev => prev + count);
+    };
+
+
     return (
         <EconomyContext.Provider value={{
             mana,
@@ -131,6 +140,8 @@ export const EconomyProvider: React.FC<{ children: ReactNode }> = ({ children })
             useItemFromInventory,
             offlineStats,
             upgradeOfflineStats,
+            enemiesDefeated,
+            incrementEnemiesDefeated,
         }}>
             {children}
         </EconomyContext.Provider>

@@ -50,11 +50,12 @@ const createInitialRealms = (): Record<RealmId, GridState> => ({
     sky: createInitialGrid()
 });
 
-const REALM_CONFIG: Record<RealmId, { name: string; cost: number; description: string }> = {
-    plains: { name: '平原', cost: 0, description: '穏やかな平原' },
-    mine: { name: '鉱山', cost: 50000, description: 'マナ豊富だが危険' },
-    sky: { name: '天空', cost: 500000, description: '神秘の土地' }
+const REALM_CONFIG: Record<RealmId, { name: string; cost: number; enemiesRequired: number; description: string }> = {
+    plains: { name: '平原', cost: 0, enemiesRequired: 0, description: '穏やかな平原' },
+    mine: { name: '鉱山', cost: 50000, enemiesRequired: 50, description: 'マナ豊富だが危険 (必要討伐数: 50)' },
+    sky: { name: '天空', cost: 500000, enemiesRequired: 200, description: '神秘の土地 (必要討伐数: 200)' }
 };
+
 
 // Basic Trash Bin Component (Inline for simplicity)
 const TrashBin: React.FC<{ activeItem: GridItem | null, mana: number, cost: number }> = ({ activeItem, mana, cost }) => {
@@ -162,7 +163,21 @@ export const GameGrid: React.FC = () => {
     const [barrierEndTime, setBarrierEndTime] = useState<number>(0);
     const floatingTextRef = useRef<FloatingTextHandle>(null);
 
-    const { mana, addMana, consumeMana, mps, setMps, upgrades, setMpsMultiplier, inventory, addItemToInventory, useItemFromInventory, offlineStats } = useEconomy();
+    const {
+        mana,
+        addMana,
+        consumeMana,
+        mps,
+        setMps,
+        upgrades,
+        setMpsMultiplier,
+        inventory,
+        addItemToInventory,
+        useItemFromInventory,
+        offlineStats,
+        enemiesDefeated,
+        incrementEnemiesDefeated
+    } = useEconomy();
     const { triggerImpact } = useHaptics();
 
     // Shop & Active Skills State
@@ -211,7 +226,7 @@ export const GameGrid: React.FC = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             const specials = { boostEndTime, barrierEndTime };
-            saveGame(realms, unlockedRealms, mana, upgrades, specials, inventory, offlineStats);
+            saveGame(realms, unlockedRealms, mana, upgrades, specials, inventory, offlineStats, enemiesDefeated);
         }, 1000);
         return () => clearTimeout(timer);
     }, [realms, unlockedRealms, mana, upgrades, offlineStats, boostEndTime, barrierEndTime, inventory, saveGame]);
@@ -243,9 +258,11 @@ export const GameGrid: React.FC = () => {
         const loaded = loadGame();
         if (!loaded) return;
 
-        const { mana: loadedMana, offlineEarnings, realms: loadedRealms, specials, inventory: loadedInventory } = loaded;
+        const { mana: loadedMana, offlineEarnings, realms: loadedRealms, specials, inventory: loadedInventory, enemiesDefeated: loadedKills } = loaded;
 
         if (loadedMana !== null) addMana(loadedMana);
+        if (loadedKills !== undefined) incrementEnemiesDefeated(loadedKills);
+
 
         if (loadedInventory) {
             Object.entries(loadedInventory).forEach(([itemId, count]) => {
@@ -482,7 +499,9 @@ export const GameGrid: React.FC = () => {
                         addMana(reward);
                         totalManaGained += reward;
                         enemyDefeatedCount++;
+                        incrementEnemiesDefeated(1);
                         showFloatingText(x, y, `+${reward}マナ`, "#2ed573");
+
                         addLog(`敵を撃破！ +${reward}マナ`, 'success');
                     }
                 });
@@ -624,8 +643,10 @@ export const GameGrid: React.FC = () => {
             const targets = enemies.slice(0, 5);
             targets.forEach(({ x, y }) => {
                 newGrid[y][x].item = null;
+                incrementEnemiesDefeated(1);
                 showFloatingText(x, y, "BOOM!", "#e17055");
             });
+
 
             triggerImpact(ImpactStyle.Heavy);
             addLog(`マナ・ボムを使用！ ${targets.length}体の敵を吹き飛ばしました。`, "success");
@@ -688,8 +709,10 @@ export const GameGrid: React.FC = () => {
                     if (newGrid[y][x].item?.type === 'enemy') {
                         newGrid[y][x].item = null;
                         count++;
+                        incrementEnemiesDefeated(1);
                         manaGain += 500;
                         showFloatingText(x, y, "+500", "#e17055");
+
                     }
                 }
             }
@@ -718,7 +741,8 @@ export const GameGrid: React.FC = () => {
                     const isUnlocked = unlockedRealms.includes(realmId);
                     const isActive = activeRealmId === realmId;
                     const config = REALM_CONFIG[realmId];
-                    const canUnlock = !isUnlocked && mana >= config.cost;
+                    const hasKills = enemiesDefeated >= config.enemiesRequired;
+                    const canUnlock = !isUnlocked && mana >= config.cost && hasKills;
 
                     return (
                         <button
@@ -728,7 +752,7 @@ export const GameGrid: React.FC = () => {
                                 if (isUnlocked) {
                                     setActiveRealmId(realmId);
                                 } else {
-                                    if (confirm(`${config.name}を開放しますか？\nコスト: ${config.cost.toLocaleString()}マナ\n\n${config.description}`)) {
+                                    if (confirm(`${config.name}を開放しますか？\nコスト: ${config.cost.toLocaleString()}マナ\n必要討伐数: ${config.enemiesRequired} (現在: ${enemiesDefeated})\n\n${config.description}`)) {
                                         handleUnlockRealm(realmId);
                                     }
                                 }
@@ -741,6 +765,7 @@ export const GameGrid: React.FC = () => {
                                 border: isActive ? '2px solid #6c5ce7' : (canUnlock ? '2px solid #2ed573' : '1px solid rgba(0,0,0,0.1)'),
                                 background: isActive ? '#6c5ce7' : (isUnlocked ? '#ffffff' : (canUnlock ? 'linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%)' : '#f1f2f6')),
                                 color: isActive ? '#fff' : (isUnlocked ? '#333' : (canUnlock ? '#1e3c1f' : '#a4b0be')),
+
                                 fontWeight: 'bold',
                                 cursor: 'pointer',
                                 opacity: isUnlocked ? 1 : (canUnlock ? 1 : 0.7),

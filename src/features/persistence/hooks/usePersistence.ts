@@ -11,6 +11,8 @@ const STORAGE_KEY_TIME = 'manamon_last_time';
 const STORAGE_KEY_SPECIALS = 'manamon_specials';
 const STORAGE_KEY_INVENTORY = 'manamon_inventory';
 const STORAGE_KEY_OFFLINE = 'manamon_offline_stats';
+const STORAGE_KEY_KILLS = 'manamon_kills';
+
 
 export interface LoadedState {
     realms: Record<RealmId, GridState>;
@@ -21,6 +23,7 @@ export interface LoadedState {
     specials: SpecialState | null;
     inventory: Inventory | null;
     offlineStats: OfflineStats | null;
+    enemiesDefeated: number;
 }
 
 const createEmptyGrid = (): GridState => {
@@ -41,7 +44,8 @@ export const usePersistence = () => {
         upgrades: UpgradeStats,
         specials?: SpecialState,
         inventory?: Inventory,
-        offlineStats?: OfflineStats
+        offlineStats?: OfflineStats,
+        enemiesDefeated?: number
     ) => {
         localStorage.setItem(STORAGE_KEY_REALMS, JSON.stringify(realms));
         localStorage.setItem(STORAGE_KEY_UNLOCKED_REALMS, JSON.stringify(unlockedRealms));
@@ -51,7 +55,9 @@ export const usePersistence = () => {
         if (specials) localStorage.setItem(STORAGE_KEY_SPECIALS, JSON.stringify(specials));
         if (inventory) localStorage.setItem(STORAGE_KEY_INVENTORY, JSON.stringify(inventory));
         if (offlineStats) localStorage.setItem(STORAGE_KEY_OFFLINE, JSON.stringify(offlineStats));
+        if (enemiesDefeated !== undefined) localStorage.setItem(STORAGE_KEY_KILLS, enemiesDefeated.toString());
     }, []);
+
 
     const loadGame = useCallback((): LoadedState | null => {
         const realmsStr = localStorage.getItem(STORAGE_KEY_REALMS);
@@ -63,6 +69,8 @@ export const usePersistence = () => {
         const specialsStr = localStorage.getItem(STORAGE_KEY_SPECIALS);
         const inventoryStr = localStorage.getItem(STORAGE_KEY_INVENTORY);
         const offlineStatsStr = localStorage.getItem(STORAGE_KEY_OFFLINE);
+        const killsStr = localStorage.getItem(STORAGE_KEY_KILLS);
+
 
         let realms: Record<RealmId, GridState>;
         let unlockedRealms: RealmId[] = ['plains'];
@@ -105,8 +113,11 @@ export const usePersistence = () => {
             offlineEarnings = Math.min(elapsedSeconds, maxTime) * efficiency;
         }
 
-        return { realms, unlockedRealms, mana, upgrades, offlineEarnings, specials, inventory, offlineStats };
+        const enemiesDefeated = killsStr ? parseInt(killsStr, 10) : 0;
+
+        return { realms, unlockedRealms, mana, upgrades, offlineEarnings, specials, inventory, offlineStats, enemiesDefeated };
     }, []);
+
 
     const clearSave = useCallback(() => {
         localStorage.clear(); // Simple clear all for now
